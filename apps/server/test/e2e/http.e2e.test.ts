@@ -1,7 +1,7 @@
-import { problemDetails } from "@turium-assignment/contracts";
 import { readMemoryLogs } from "evlog/memory";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { expectProblem } from "../support/api";
 import { startApp } from "../support/app";
 
 let app: Awaited<ReturnType<typeof startApp>>;
@@ -13,15 +13,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await app.close();
 });
-
-async function expectProblem(response: Response, status: number, code: string) {
-  expect(response.status).toBe(status);
-  expect(response.headers.get("content-type")).toMatch(/^application\/problem\+json/);
-  const body = problemDetails.parse(await response.json());
-  expect(body).toMatchObject({ status, code });
-  expect(body.requestId).toBe(response.headers.get("x-request-id"));
-  return body;
-}
 
 describe("GET /health", () => {
   test("returns ok when the database answers", async () => {
