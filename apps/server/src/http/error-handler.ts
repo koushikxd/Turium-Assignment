@@ -1,7 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import { z } from "zod";
 
-import { AppError, sendProblem } from "./errors";
+import { AppError, sendProblem, toError } from "./errors";
 
 // Errors thrown by express.json() carry a `type` field (body-parser's contract).
 const bodyParserError = z.object({
@@ -42,6 +42,6 @@ export const errorHandler: ErrorRequestHandler = (cause: unknown, req, res, _nex
     );
   }
 
-  req.log?.error(cause instanceof Error ? cause : String(cause));
+  req.log?.error(toError(cause));
   sendProblem(req, res, new AppError("INTERNAL", "Something went wrong."));
 };

@@ -1,3 +1,4 @@
+import type { EmbeddingModel, LanguageModel } from "ai";
 import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
@@ -19,7 +20,8 @@ export function tempDatabasePath() {
 type StartAppOptions = {
   databasePath?: string;
   embeddingModelId?: string;
-  embeddingModel?: ReturnType<typeof fakeEmbeddingModel>;
+  embeddingModel?: Exclude<EmbeddingModel, string>;
+  chatModel?: LanguageModel;
   networkPolicy?: NetworkPolicy;
   fetchTimeoutMs?: number;
 };
@@ -44,7 +46,7 @@ export async function startApp(options: StartAppOptions = {}) {
   worker.start();
   const app = createApp({
     db,
-    models: { chat: fakeChatModel("Fake answer."), embedding },
+    models: { chat: options.chatModel ?? fakeChatModel({ answer: "Fake answer." }), embedding },
     networkPolicy,
     worker,
   });
@@ -58,6 +60,9 @@ export async function startApp(options: StartAppOptions = {}) {
     db,
     async close() {
       server.close();
+      // After an aborted request, fetch leaves a fresh socket open that never sends
+      // a request, and server.close() waits for it until fetch's 4 s idle timeout.
+      server.closeAllConnections();
       await once(server, "close");
       await worker.stop();
       if (db.isOpen) db.close();

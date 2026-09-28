@@ -36,31 +36,64 @@ export function fakeEmbeddingModel(
     maxEmbeddingsPerCall: 2048,
     doEmbed: async ({ values }) => {
       await beforeEmbed?.(values);
-      return { embeddings: values.map(embedText), warnings: [] };
+      // One token per value. Without usage, evlog's embedding token count is NaN.
+      return { embeddings: values.map(embedText), usage: { tokens: values.length }, warnings: [] };
     },
   });
 }
 
-export function fakeChatModel(text: string) {
+const usage = {
+  inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 },
+  outputTokens: { total: 0, text: 0, reasoning: 0 },
+};
+
+export const answerUsage = {
+  inputTokens: { total: 120, noCache: 120, cacheRead: 0, cacheWrite: 0 },
+  outputTokens: { total: 8, text: 8, reasoning: 0 },
+};
+
+type ChatScript = {
+  // Streamed word by word by doStream, the answer call.
+  answer: string;
+  // Returned by doGenerate, the rewrite call.
+  rewrite?: string;
+  generateError?: Error;
+  // Emitted after the answer text, in place of the finish chunk.
+  streamError?: Error;
+  chunkDelayMs?: number;
+};
+
+export function fakeChatModel(script: ChatScript) {
   return new MockLanguageModelV4({
     modelId: "fake-chat",
+    doGenerate: async () => {
+      if (script.generateError) throw script.generateError;
+      return {
+        content: [{ type: "text", text: script.rewrite ?? "" }],
+        finishReason: { unified: "stop", raw: undefined },
+        usage,
+        warnings: [],
+      };
+    },
     doStream: async () => ({
       stream: simulateReadableStream({
+        chunkDelayInMs: script.chunkDelayMs,
         chunks: [
           { type: "stream-start", warnings: [] },
           { type: "text-start", id: "text-1" },
-          ...text
+          ...script.answer
             .split(/(?<= )/)
             .map((delta) => ({ type: "text-delta" as const, id: "text-1", delta })),
-          { type: "text-end", id: "text-1" },
-          {
-            type: "finish",
-            finishReason: { unified: "stop", raw: undefined },
-            usage: {
-              inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 },
-              outputTokens: { total: 0, text: 0, reasoning: 0 },
-            },
-          },
+          ...(script.streamError
+            ? [{ type: "error" as const, error: script.streamError }]
+            : [
+                { type: "text-end" as const, id: "text-1" },
+                {
+                  type: "finish" as const,
+                  finishReason: { unified: "stop" as const, raw: undefined },
+                  usage: answerUsage,
+                },
+              ]),
         ],
       }),
     }),

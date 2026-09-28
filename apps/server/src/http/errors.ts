@@ -29,6 +29,10 @@ export class AppError extends Error {
   }
 }
 
+export function toError(cause: unknown) {
+  return cause instanceof Error ? cause : new Error(String(cause));
+}
+
 export function sendProblem(req: Request, res: Response, error: AppError) {
   const { status, title } = problems[error.code];
   const body: ProblemDetails = {
