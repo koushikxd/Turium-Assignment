@@ -59,3 +59,7 @@ coverage
 .cache
 tmp
 temp
+
+# Server runtime and test output
+data/
+test-results/

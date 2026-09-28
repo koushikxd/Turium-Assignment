@@ -7,11 +7,16 @@
     "check-types": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.mjs",
-    "env:generate": "varlock codegen"
+    "env:generate": "varlock codegen",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/openai": "4.0.78",
     "@turium-assignment/contracts": "workspace:*",
+    "ai": "7.0.118",
+    "evlog": "2.29.0",
     "express": "^5.2.1",
+    "sqlite-vec": "0.1.9",
     "varlock": "catalog:",
     "zod": "catalog:"
   },
@@ -21,6 +26,7 @@
     "@types/node": "catalog:",
     "tsdown": "^0.23.0",
     "tsx": "^4.23.13",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "5.0.2"
   }
 }

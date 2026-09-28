@@ -10,6 +10,8 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
+    "lint": "oxlint",
+    "test": "turbo run test",
     "dev:web": "turbo run dev -F web --",
     "dev:server": "turbo run dev -F server --",
     "env:generate": "varlock codegen --path ./apps/server/",
