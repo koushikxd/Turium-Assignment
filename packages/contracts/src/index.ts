@@ -80,3 +80,35 @@ export type ItemsResponse = z.infer<typeof itemsResponse>;
 
 export const itemIdParams = z.object({ id: z.coerce.number().int().positive() });
 export type ItemIdParams = z.infer<typeof itemIdParams>;
+
+export const chatMessage = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(8000),
+});
+export type ChatMessage = z.infer<typeof chatMessage>;
+
+export const queryRequest = z.object({
+  question: z.string().trim().min(1).max(2000),
+  history: z.array(chatMessage).max(12).default([]),
+});
+export type QueryRequest = z.infer<typeof queryRequest>;
+
+export const querySource = z.object({
+  n: z.number().int().positive(),
+  chunkId: z.number().int(),
+  itemId: z.number().int(),
+  title: z.string().nullable(),
+  url: z.string().nullable(),
+  snippet: z.string(),
+});
+export type QuerySource = z.infer<typeof querySource>;
+
+export const sourcesData = z.object({ query: z.string(), sources: z.array(querySource) });
+export type SourcesData = z.infer<typeof sourcesData>;
+
+export const citationsData = z.object({ citations: z.array(z.number().int().positive()) });
+export type CitationsData = z.infer<typeof citationsData>;
+
+// The `data-*` parts of the /query stream. Both apps build
+// `UIMessage<never, QueryDataTypes>` from it, so contracts needs no `ai` dependency.
+export type QueryDataTypes = { sources: SourcesData; citations: CitationsData };
