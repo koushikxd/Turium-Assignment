@@ -1,0 +1,17 @@
+
+node_modules
+dist
+build
+coverage
+.nyc_output
+.turbo
+.nx
+.vercel
+.alchemy
+.evlog
+.git
+*.tsbuildinfo
+pnpm-lock.yaml
+local.db
+local.db-*
+*.log

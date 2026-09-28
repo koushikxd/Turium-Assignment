@@ -1,0 +1,35 @@
+{
+  "name": "turium-assignment",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check-types": "turbo run check-types",
+    "dev:web": "turbo run dev -F web --",
+    "dev:server": "turbo run dev -F server --",
+    "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/",
+    "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/",
+    "check": "oxlint && oxfmt --write",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && lefthook install || test ! -e .git"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.83.0",
+    "@turium-assignment/config": "workspace:*",
+    "@types/node": "catalog:",
+    "lefthook": "^2.1.14",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.83.0",
+    "turbo": "^2.10.12",
+    "typescript": "catalog:",
+    "varlock": "catalog:"
+  },
+  "packageManager": "pnpm@11.21.0"
+}
