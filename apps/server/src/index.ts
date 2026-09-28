@@ -1,11 +1,13 @@
+import type { HealthResponse } from "@turium-assignment/contracts";
 import express from "express";
 
 const app = express();
 
 app.use(express.json());
 
-app.get("/", (_req, res) => {
-  res.status(200).send("OK");
+app.get("/health", (_req, res) => {
+  const body: HealthResponse = { status: "ok" };
+  res.status(200).json(body);
 });
 
 app.listen(3000, () => {
