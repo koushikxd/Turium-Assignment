@@ -57,6 +57,16 @@ describe("errors", () => {
     });
     await expectProblem(response, 400, "VALIDATION_FAILED");
   });
+
+  test("an unsupported JSON charset is a 400 VALIDATION_FAILED", async () => {
+    const response = await fetch(`${app.url}/ingest`, {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=latin9" },
+      body: JSON.stringify({ type: "note", text: "hello" }),
+    });
+    const body = await expectProblem(response, 400, "VALIDATION_FAILED");
+    expect(body.detail).toBe("Request body charset or content-encoding is not supported.");
+  });
 });
 
 describe("logging", () => {
