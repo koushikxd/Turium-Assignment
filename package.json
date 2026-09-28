@@ -17,7 +17,8 @@
     "env:generate": "varlock codegen --path ./apps/server/",
     "postinstall": "varlock codegen --path ./apps/server/",
     "check": "oxlint && oxfmt --write",
-    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && lefthook install || test ! -e .git"
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && lefthook install || test ! -e .git",
+    "test:live": "pnpm --filter server test:live"
   },
   "dependencies": {
     "zod": "catalog:"
