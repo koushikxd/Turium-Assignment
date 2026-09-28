@@ -180,3 +180,10 @@ export function commitChunks(
     return true;
   });
 }
+
+export function hasReadyItems(db: DatabaseSync) {
+  const row = db
+    .prepare("SELECT EXISTS(SELECT 1 FROM items WHERE status = 'ready') AS found")
+    .get();
+  return z.object({ found: z.number().int() }).parse(row).found === 1;
+}

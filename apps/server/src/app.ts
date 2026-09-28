@@ -10,6 +10,7 @@ import type { NetworkPolicy } from "./ingestion/network-policy";
 import { ingestRouter } from "./ingestion/route";
 import type { Worker } from "./ingestion/worker";
 import { itemsRouter } from "./items/routes";
+import { queryRouter } from "./query/route";
 
 export type Models = { chat: LanguageModel; embedding: EmbeddingModel };
 
@@ -20,7 +21,7 @@ export type AppDeps = {
   worker: Worker;
 };
 
-export function createApp({ db, networkPolicy, worker }: AppDeps) {
+export function createApp({ db, models, networkPolicy, worker }: AppDeps) {
   const app = express();
   app.use(requestId);
   app.use(evlog());
@@ -28,6 +29,7 @@ export function createApp({ db, networkPolicy, worker }: AppDeps) {
   app.use(healthRouter(db));
   app.use(ingestRouter(db, networkPolicy, worker));
   app.use(itemsRouter(db));
+  app.use(queryRouter(db, models));
   app.use(notFound);
   app.use(errorHandler);
   return app;
