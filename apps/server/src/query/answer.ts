@@ -65,7 +65,13 @@ export async function answerQuery(
   log.set({
     query: {
       searchMs: elapsed(searchStarted),
-      results: chunks.map(({ chunkId, itemId, vectorRank }) => ({ chunkId, itemId, vectorRank })),
+      results: chunks.map(({ chunkId, itemId, vectorRank, keywordRank, score }) => ({
+        chunkId,
+        itemId,
+        vectorRank,
+        keywordRank,
+        score,
+      })),
     },
   });
   const sources: QuerySource[] = chunks.map((chunk, index) => ({

@@ -1,44 +1,36 @@
-import { citationsData, ingestResponse, sourcesData } from "@turium-assignment/contracts";
-import { readMemoryLogs } from "evlog/memory";
+import { citationsData, ingestResponse } from "@turium-assignment/contracts";
 import { describe, expect, test, vi } from "vitest";
 
-import { expectProblem, postIngest, postQuery, readUIStream, waitForItem } from "../support/api";
-import { startApp } from "../support/app";
+import { KEYWORD_K } from "../../src/retrieval/config";
+import { keywordSearch } from "../../src/retrieval/keyword-search";
+import {
+  expectProblem,
+  partOf,
+  postIngest,
+  postQuery,
+  readUIStream,
+  requestEvent,
+  sourcesOf,
+  waitForItem,
+} from "../support/api";
+import { startApp, startAppWithNotes } from "../support/app";
 import { answerUsage, fakeChatModel, fakeEmbeddingModel } from "../support/models";
 
 const SOURDOUGH = "Sourdough starter: feed it flour and water twice a day, morning and evening.";
 const WIFI = "Office wifi: the guest password rotates every Monday at nine.";
 
-type Options = Parameters<typeof startApp>[0];
-
-async function appWithNotes(options: Options, notes = [SOURDOUGH, WIFI]) {
-  const app = await startApp(options);
-  for (const text of notes) {
-    const response = await postIngest(app.url, { type: "note", text });
-    const { item } = ingestResponse.parse(await response.json());
-    await waitForItem(app.url, item.id, (found) => found.status === "ready");
-  }
-  return app;
-}
+const appWithNotes = (
+  options: Parameters<typeof startAppWithNotes>[0],
+  notes = [SOURDOUGH, WIFI],
+) => startAppWithNotes(options, notes);
 
 type Part = Awaited<ReturnType<typeof readUIStream>>[number];
 
-const partOf = (parts: Part[], type: string) => parts.find((part) => part.type === type);
-const sourcesOf = (parts: Part[]) => sourcesData.parse(partOf(parts, "data-sources")?.data);
 const textOf = (parts: Part[]) =>
   parts
     .filter((part) => part.type === "text-delta")
     .map((part) => String(part.delta))
     .join("");
-
-const requestEvent = (response: Response) =>
-  vi.waitFor(() => {
-    const [event] = readMemoryLogs({
-      filter: (logged) => logged.requestId === response.headers.get("x-request-id"),
-    });
-    if (!event) throw new Error("no wide event yet");
-    return event;
-  });
 
 describe("POST /query", () => {
   test("with no ready items it returns 409 KNOWLEDGE_BASE_EMPTY", async () => {
@@ -111,8 +103,20 @@ describe("POST /query", () => {
         historyLength: 0,
         rewrittenQuery: "How often do I feed it?",
         results: [
-          { chunkId: expect.any(Number), itemId: expect.any(Number), vectorRank: 1 },
-          { chunkId: expect.any(Number), itemId: expect.any(Number), vectorRank: 2 },
+          {
+            chunkId: expect.any(Number),
+            itemId: expect.any(Number),
+            vectorRank: 1,
+            keywordRank: 1,
+            score: 2 / 61,
+          },
+          {
+            chunkId: expect.any(Number),
+            itemId: expect.any(Number),
+            vectorRank: 2,
+            keywordRank: null,
+            score: 1 / 62,
+          },
         ],
         citations: { valid: [1], invalid: [9] },
       },
@@ -272,13 +276,20 @@ describe("POST /query", () => {
     await app.close();
   });
 
-  test("a deleted item's chunks no longer appear in data-sources", async () => {
+  test("a deleted item's chunks no longer appear in data-sources or keyword search", async () => {
     const app = await appWithNotes({});
-    const ask = async () =>
-      sourcesOf(await readUIStream(await postQuery(app.url, { question: "wifi password" })));
+    const ask = async () => {
+      const response = await postQuery(app.url, { question: "wifi password" });
+      return { ...sourcesOf(await readUIStream(response)), event: await requestEvent(response) };
+    };
     const before = await ask();
     const wifi = before.sources.find((source) => source.snippet === WIFI);
     expect(wifi).toBeDefined();
+    expect(before.event.query).toMatchObject({
+      results: expect.arrayContaining([
+        expect.objectContaining({ chunkId: wifi?.chunkId, keywordRank: 1 }),
+      ]),
+    });
 
     const deleted = await fetch(`${app.url}/items/${wifi?.itemId}`, { method: "DELETE" });
     expect(deleted.status).toBe(204);
@@ -286,6 +297,8 @@ describe("POST /query", () => {
     const after = await ask();
     expect(after.sources.map((source) => source.itemId)).not.toContain(wifi?.itemId);
     expect(after.sources).toHaveLength(1);
+    // retrieve joins chunks, which would hide a stale FTS row from data-sources.
+    expect(keywordSearch(app.db, "wifi password", KEYWORD_K)).toEqual([]);
     await app.close();
   });
 
