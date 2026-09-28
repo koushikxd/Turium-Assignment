@@ -6,19 +6,26 @@ import { join } from "node:path";
 
 import { createApp } from "../../src/app";
 import { openDatabase } from "../../src/db/open";
+import { createWorker } from "../../src/ingestion/worker";
 import { fakeChatModel, fakeEmbeddingModel } from "./models";
 
 export function tempDatabasePath() {
   return join(mkdtempSync(join(tmpdir(), "inbox-test-")), "inbox.db");
 }
 
-type StartAppOptions = { databasePath?: string; embeddingModelId?: string };
+type StartAppOptions = {
+  databasePath?: string;
+  embeddingModelId?: string;
+  embeddingModel?: ReturnType<typeof fakeEmbeddingModel>;
+};
 
 export async function startApp(options: StartAppOptions = {}) {
   const databasePath = options.databasePath ?? tempDatabasePath();
-  const embedding = fakeEmbeddingModel(options.embeddingModelId);
+  const embedding = options.embeddingModel ?? fakeEmbeddingModel(options.embeddingModelId);
   const db = openDatabase(databasePath, embedding.modelId);
-  const app = createApp({ db, models: { chat: fakeChatModel("Fake answer."), embedding } });
+  const worker = createWorker(db, embedding);
+  worker.start();
+  const app = createApp({ db, models: { chat: fakeChatModel("Fake answer."), embedding }, worker });
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
   // SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
@@ -30,6 +37,7 @@ export async function startApp(options: StartAppOptions = {}) {
     async close() {
       server.close();
       await once(server, "close");
+      await worker.stop();
       if (db.isOpen) db.close();
       if (!options.databasePath) rmSync(join(databasePath, ".."), { recursive: true, force: true });
     },
