@@ -4,7 +4,14 @@ import { z } from "zod";
 import { AppError, sendProblem } from "./errors";
 
 // Errors thrown by express.json() carry a `type` field (body-parser's contract).
-const bodyParserError = z.object({ type: z.enum(["entity.too.large", "entity.parse.failed"]) });
+const bodyParserError = z.object({
+  type: z.enum([
+    "entity.too.large",
+    "entity.parse.failed",
+    "charset.unsupported",
+    "encoding.unsupported",
+  ]),
+});
 
 export const notFound: RequestHandler = (req) => {
   throw new AppError("ROUTE_NOT_FOUND", `No route for ${req.method} ${req.path}.`);
@@ -22,6 +29,16 @@ export const errorHandler: ErrorRequestHandler = (cause: unknown, req, res, _nex
       req,
       res,
       new AppError("VALIDATION_FAILED", "Request body is not valid JSON."),
+    );
+  }
+  if (parsed.success) {
+    return sendProblem(
+      req,
+      res,
+      new AppError(
+        "VALIDATION_FAILED",
+        "Request body charset or content-encoding is not supported.",
+      ),
     );
   }
 

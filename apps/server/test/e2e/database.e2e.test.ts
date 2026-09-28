@@ -1,5 +1,8 @@
+import { DatabaseSync } from "node:sqlite";
+
 import { describe, expect, test } from "vitest";
 
+import { migrations } from "../../src/db/migrations";
 import { embedText } from "../support/models";
 import { startApp, tempDatabasePath } from "../support/app";
 
@@ -39,6 +42,18 @@ describe("database", () => {
       startApp({ databasePath, embeddingModelId: "text-embedding-3-large" }),
     ).rejects.toThrow(
       "Embedding model mismatch: database has text-embedding-3-small, config has text-embedding-3-large",
+    );
+  });
+
+  test("a database newer than the known migrations refuses to start", async () => {
+    const databasePath = tempDatabasePath();
+    await (await startApp({ databasePath })).close();
+    const future = new DatabaseSync(databasePath);
+    future.exec(`PRAGMA user_version = ${migrations.length + 1}`);
+    future.close();
+
+    await expect(startApp({ databasePath })).rejects.toThrow(
+      `Database version mismatch: database has ${migrations.length + 1}, server knows ${migrations.length}`,
     );
   });
 

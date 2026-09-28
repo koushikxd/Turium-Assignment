@@ -4,9 +4,11 @@ import type { EmbeddingModel } from "ai";
 import { createLogger } from "evlog";
 import type { DatabaseSync } from "node:sqlite";
 
-import { commitChunks, markFailed } from "../items/repository";
+import { commitChunks, markFailed, saveExtraction } from "../items/repository";
 import type { ClaimedItem } from "../items/repository";
 import { chunk } from "./chunker";
+import { extract } from "./extract";
+import type { FetchUrl } from "./url-fetcher";
 
 // A failure the user sees on the item. The message is ours; the cause is only logged.
 export class ItemFailure extends Error {
@@ -22,12 +24,28 @@ export class ItemFailure extends Error {
 export async function processItem(
   db: DatabaseSync,
   embeddingModel: EmbeddingModel,
+  fetchUrl: FetchUrl,
   item: ClaimedItem,
 ) {
   const log = createLogger({ job: "ingestion", itemId: item.id, type: item.type });
   try {
+    let content: string;
     let started = performance.now();
-    const texts = chunk(item.content);
+    if (item.type === "url") {
+      const page = await fetchUrl(item.url);
+      log.set({ fetchMs: elapsed(started), bytes: page.bytes });
+
+      started = performance.now();
+      const { title, text, truncated } = extract(page);
+      saveExtraction(db, item.id, { title, content: text, truncated });
+      log.set({ extractMs: elapsed(started), truncated });
+      content = text;
+    } else {
+      content = item.content;
+    }
+
+    started = performance.now();
+    const texts = chunk(content);
     log.set({ chunkMs: elapsed(started), chunkCount: texts.length });
 
     started = performance.now();

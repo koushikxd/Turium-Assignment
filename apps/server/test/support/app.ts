@@ -6,6 +6,9 @@ import { join } from "node:path";
 
 import { createApp } from "../../src/app";
 import { openDatabase } from "../../src/db/open";
+import { defaultNetworkPolicy } from "../../src/ingestion/network-policy";
+import type { NetworkPolicy } from "../../src/ingestion/network-policy";
+import { createUrlFetcher } from "../../src/ingestion/url-fetcher";
 import { createWorker } from "../../src/ingestion/worker";
 import { fakeChatModel, fakeEmbeddingModel } from "./models";
 
@@ -17,15 +20,34 @@ type StartAppOptions = {
   databasePath?: string;
   embeddingModelId?: string;
   embeddingModel?: ReturnType<typeof fakeEmbeddingModel>;
+  networkPolicy?: NetworkPolicy;
+  fetchTimeoutMs?: number;
+};
+
+// The default policy, except loopback, so the app can reach the local fixture server.
+const allowLoopback: NetworkPolicy = {
+  blocks: (address) =>
+    !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(address) &&
+    defaultNetworkPolicy.blocks(address),
 };
 
 export async function startApp(options: StartAppOptions = {}) {
   const databasePath = options.databasePath ?? tempDatabasePath();
   const embedding = options.embeddingModel ?? fakeEmbeddingModel(options.embeddingModelId);
   const db = openDatabase(databasePath, embedding.modelId);
-  const worker = createWorker(db, embedding);
+  const networkPolicy = options.networkPolicy ?? allowLoopback;
+  const worker = createWorker(
+    db,
+    embedding,
+    createUrlFetcher(networkPolicy, options.fetchTimeoutMs),
+  );
   worker.start();
-  const app = createApp({ db, models: { chat: fakeChatModel("Fake answer."), embedding }, worker });
+  const app = createApp({
+    db,
+    models: { chat: fakeChatModel("Fake answer."), embedding },
+    networkPolicy,
+    worker,
+  });
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
   // SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.

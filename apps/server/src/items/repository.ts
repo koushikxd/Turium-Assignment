@@ -47,11 +47,10 @@ const itemRow = z
 
 const idRow = z.object({ id: z.number().int() });
 
-const claimedRow = z.object({
-  id: z.number().int(),
-  type: z.enum(["note", "url"]),
-  content: z.string(),
-});
+const claimedRow = z.discriminatedUnion("type", [
+  z.object({ id: z.number().int(), type: z.literal("note"), content: z.string() }),
+  z.object({ id: z.number().int(), type: z.literal("url"), url: z.string() }),
+]);
 export type ClaimedItem = z.infer<typeof claimedRow>;
 
 function getItem(db: DatabaseSync, id: number) {
@@ -70,22 +69,28 @@ function immediate<T>(db: DatabaseSync, work: () => T) {
   }
 }
 
-type NewNote = { title: string; content: string; dedupKey: string };
+type NewItem = {
+  type: "note" | "url";
+  title: string | null;
+  url: string | null;
+  content: string | null;
+  dedupKey: string;
+};
 
 // The partial unique index on dedup_key rejects a duplicate of any non-failed item.
-export function insertNote(db: DatabaseSync, note: NewNote) {
+export function insertItem(db: DatabaseSync, newItem: NewItem) {
   const inserted = db
     .prepare(
-      `INSERT INTO items (type, title, dedup_key, content, status, created_at, updated_at)
-       VALUES ('note', ?, ?, ?, 'pending', ${NOW}, ${NOW})
+      `INSERT INTO items (type, title, url, dedup_key, content, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'pending', ${NOW}, ${NOW})
        ON CONFLICT DO NOTHING
        RETURNING id`,
     )
-    .get(note.title, note.dedupKey, note.content);
+    .get(newItem.type, newItem.title, newItem.url, newItem.dedupKey, newItem.content);
   if (inserted) return { item: getItem(db, idRow.parse(inserted).id) };
   const existing = db
     .prepare("SELECT id FROM items WHERE dedup_key = ? AND status <> 'failed'")
-    .get(note.dedupKey);
+    .get(newItem.dedupKey);
   return { existingItemId: idRow.parse(existing).id };
 }
 
@@ -112,7 +117,7 @@ export function claimNextItem(db: DatabaseSync) {
     .prepare(
       `UPDATE items SET status = 'processing', updated_at = ${NOW}
        WHERE id = (SELECT id FROM items WHERE status = 'pending' ORDER BY id LIMIT 1)
-       RETURNING id, type, content`,
+       RETURNING id, type, content, url`,
     )
     .get();
   return row ? claimedRow.parse(row) : undefined;
@@ -122,6 +127,16 @@ export function requeueProcessing(db: DatabaseSync) {
   db.prepare(
     `UPDATE items SET status = 'pending', updated_at = ${NOW} WHERE status = 'processing'`,
   ).run();
+}
+
+type Extraction = { title: string | null; content: string; truncated: boolean };
+
+// A no-op when the item was deleted while processing, like markFailed.
+export function saveExtraction(db: DatabaseSync, id: number, extraction: Extraction) {
+  db.prepare(
+    `UPDATE items SET title = ?, content = ?, truncated = ?, updated_at = ${NOW}
+     WHERE id = ? AND status = 'processing'`,
+  ).run(extraction.title, extraction.content, extraction.truncated ? 1 : 0, id);
 }
 
 // Returns false when the item was deleted while processing.
