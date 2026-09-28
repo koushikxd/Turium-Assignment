@@ -1,0 +1,8 @@
+{
+  "extends": "@turium-assignment/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["src"]
+}
