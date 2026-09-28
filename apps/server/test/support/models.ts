@@ -30,6 +30,7 @@ function fnv1a(word: string): number {
 export function fakeEmbeddingModel(
   modelId = "text-embedding-3-small",
   beforeEmbed?: (values: string[]) => Promise<void>,
+  embed = embedText,
 ) {
   return new MockEmbeddingModelV4({
     modelId,
@@ -37,7 +38,7 @@ export function fakeEmbeddingModel(
     doEmbed: async ({ values }) => {
       await beforeEmbed?.(values);
       // One token per value. Without usage, evlog's embedding token count is NaN.
-      return { embeddings: values.map(embedText), usage: { tokens: values.length }, warnings: [] };
+      return { embeddings: values.map(embed), usage: { tokens: values.length }, warnings: [] };
     },
   });
 }

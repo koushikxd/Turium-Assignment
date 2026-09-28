@@ -1,3 +1,4 @@
+import { ingestResponse } from "@turium-assignment/contracts";
 import type { EmbeddingModel, LanguageModel } from "ai";
 import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -11,6 +12,7 @@ import { defaultNetworkPolicy } from "../../src/ingestion/network-policy";
 import type { NetworkPolicy } from "../../src/ingestion/network-policy";
 import { createUrlFetcher } from "../../src/ingestion/url-fetcher";
 import { createWorker } from "../../src/ingestion/worker";
+import { postIngest, waitForItem } from "./api";
 import { fakeChatModel, fakeEmbeddingModel } from "./models";
 
 export function tempDatabasePath() {
@@ -69,4 +71,14 @@ export async function startApp(options: StartAppOptions = {}) {
       if (!options.databasePath) rmSync(join(databasePath, ".."), { recursive: true, force: true });
     },
   };
+}
+
+export async function startAppWithNotes(options: StartAppOptions, notes: string[]) {
+  const app = await startApp(options);
+  for (const text of notes) {
+    const response = await postIngest(app.url, { type: "note", text });
+    const { item } = ingestResponse.parse(await response.json());
+    await waitForItem(app.url, item.id, (found) => found.status === "ready");
+  }
+  return app;
 }

@@ -1,5 +1,6 @@
-import { itemsResponse, problemDetails } from "@turium-assignment/contracts";
+import { itemsResponse, problemDetails, sourcesData } from "@turium-assignment/contracts";
 import type { IngestRequest, Item, QueryRequest } from "@turium-assignment/contracts";
+import { readMemoryLogs } from "evlog/memory";
 import { expect, vi } from "vitest";
 import { z } from "zod";
 
@@ -60,3 +61,17 @@ export async function readUIStream(response: Response) {
     .filter((event) => event.startsWith("data: ") && event !== "data: [DONE]")
     .map((event) => streamPart.parse(JSON.parse(event.slice("data: ".length))));
 }
+
+type Part = Awaited<ReturnType<typeof readUIStream>>[number];
+
+export const partOf = (parts: Part[], type: string) => parts.find((part) => part.type === type);
+export const sourcesOf = (parts: Part[]) => sourcesData.parse(partOf(parts, "data-sources")?.data);
+
+export const requestEvent = (response: Response) =>
+  vi.waitFor(() => {
+    const [event] = readMemoryLogs({
+      filter: (logged) => logged.requestId === response.headers.get("x-request-id"),
+    });
+    if (!event) throw new Error("no wide event yet");
+    return event;
+  });
