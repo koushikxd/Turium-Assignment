@@ -25,11 +25,19 @@ function fnv1a(word: string): number {
   return hash;
 }
 
-export function fakeEmbeddingModel(modelId = "text-embedding-3-small") {
+// beforeEmbed runs before every embed call. Tests use it to hold a job at the
+// embed stage (await a promise) or to make the provider fail (throw).
+export function fakeEmbeddingModel(
+  modelId = "text-embedding-3-small",
+  beforeEmbed?: (values: string[]) => Promise<void>,
+) {
   return new MockEmbeddingModelV4({
     modelId,
     maxEmbeddingsPerCall: 2048,
-    doEmbed: async ({ values }) => ({ embeddings: values.map(embedText), warnings: [] }),
+    doEmbed: async ({ values }) => {
+      await beforeEmbed?.(values);
+      return { embeddings: values.map(embedText), warnings: [] };
+    },
   });
 }
 
