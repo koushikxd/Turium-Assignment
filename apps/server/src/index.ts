@@ -1,15 +1,20 @@
-import type { HealthResponse } from "@turium-assignment/contracts";
-import express from "express";
+import { createOpenAI } from "@ai-sdk/openai";
+import { initLogger } from "evlog";
+import { createFsDrain } from "evlog/fs";
 
-const app = express();
+import { createApp } from "./app";
+import { openDatabase } from "./db/open";
+import { env } from "./env.server";
 
-app.use(express.json());
+initLogger({ drain: createFsDrain() });
 
-app.get("/health", (_req, res) => {
-  const body: HealthResponse = { status: "ok" };
-  res.status(200).json(body);
+const db = openDatabase(env.DATABASE_PATH, env.EMBEDDING_MODEL);
+const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
+const app = createApp({
+  db,
+  models: { chat: openai(env.CHAT_MODEL), embedding: openai.embedding(env.EMBEDDING_MODEL) },
 });
 
-app.listen(3000, () => {
-  console.log("Server is running on http://localhost:3000");
+app.listen(env.PORT, () => {
+  console.log(`Server is running on http://localhost:${env.PORT}`);
 });
