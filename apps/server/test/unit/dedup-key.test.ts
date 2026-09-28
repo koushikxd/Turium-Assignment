@@ -18,6 +18,10 @@ describe("dedupKey", () => {
     expect(note("line one\r\nline two")).toBe(note("line one\nline two"));
   });
 
+  test("lone CR and LF line endings give the same key", () => {
+    expect(note("a\rb")).toBe(note("a\nb"));
+  });
+
   test("surrounding whitespace is ignored", () => {
     expect(note("  hello world \n\n")).toBe(note("hello world"));
   });

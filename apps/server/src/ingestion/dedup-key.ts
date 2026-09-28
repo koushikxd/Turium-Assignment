@@ -19,6 +19,6 @@ function normalizeUrl(value: string) {
 // surrounding whitespace, so a pasted copy of the same note is a duplicate.
 export function dedupKey(request: IngestRequest) {
   if (request.type === "url") return `url:${normalizeUrl(request.url)}`;
-  const text = request.text.replaceAll("\r\n", "\n").normalize("NFC").trim();
+  const text = request.text.replaceAll(/\r\n?/g, "\n").normalize("NFC").trim();
   return `note:${createHash("sha256").update(text).digest("hex")}`;
 }
