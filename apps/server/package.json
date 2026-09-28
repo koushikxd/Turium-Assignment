@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.78",
+    "@mozilla/readability": "0.6.0",
     "@turium-assignment/contracts": "workspace:*",
     "ai": "7.0.118",
     "evlog": "2.29.0",
     "express": "^5.2.1",
+    "linkedom": "0.18.13",
     "sqlite-vec": "0.1.9",
     "varlock": "catalog:",
     "zod": "catalog:"

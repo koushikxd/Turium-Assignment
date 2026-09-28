@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 
 import { claimNextItem, requeueProcessing } from "../items/repository";
 import { processItem } from "./pipeline";
+import type { FetchUrl } from "./url-fetcher";
 
 const CONCURRENCY = 2;
 
@@ -10,7 +11,7 @@ export type Worker = ReturnType<typeof createWorker>;
 
 // The database is the queue (ARCHITECTURE §5.1). Runners drain pending items,
 // then sleep until notify(). There is no polling timer.
-export function createWorker(db: DatabaseSync, embeddingModel: EmbeddingModel) {
+export function createWorker(db: DatabaseSync, embeddingModel: EmbeddingModel, fetchUrl: FetchUrl) {
   let stopping = false;
   let notified = false;
   let waiters: (() => void)[] = [];
@@ -27,7 +28,7 @@ export function createWorker(db: DatabaseSync, embeddingModel: EmbeddingModel) {
       notified = false;
       const item = claimNextItem(db);
       if (item) {
-        await processItem(db, embeddingModel, item);
+        await processItem(db, embeddingModel, fetchUrl, item);
         continue;
       }
       // The latch covers a notify() between the empty claim and the sleep. With
