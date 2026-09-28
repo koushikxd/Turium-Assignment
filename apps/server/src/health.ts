@@ -2,7 +2,7 @@ import type { HealthResponse } from "@turium-assignment/contracts";
 import { Router } from "express";
 import type { DatabaseSync } from "node:sqlite";
 
-import { AppError } from "./http/errors";
+import { AppError, toError } from "./http/errors";
 
 export function healthRouter(db: DatabaseSync) {
   const router = Router();
@@ -10,7 +10,7 @@ export function healthRouter(db: DatabaseSync) {
     try {
       db.prepare("SELECT 1").get();
     } catch (error) {
-      req.log?.error(error instanceof Error ? error : String(error));
+      req.log?.error(toError(error));
       throw new AppError("SERVICE_UNAVAILABLE", "Database is not reachable.");
     }
     const body: HealthResponse = { status: "ok" };
