@@ -1,8 +1,8 @@
 ---
 name: Turium
 description: >-
-  Design system for apps/web, extracted from packages/ui/src/styles/globals.css, the
-  packages/ui primitives, and the product surfaces (chat, chats, projects, crons, memory,
+  Design system for apps/web, extracted from apps/web/src/index.css, the
+  apps/web/src/components/ui primitives, and the product surfaces (chat, chats, projects, crons, memory,
   knowledge base). Values are written "light → dark" where the two themes differ. The
   /admin and /settings routes were out of scope for this pass and may deviate.
 colors:
@@ -117,7 +117,7 @@ spacing:
   5: 20px # the default gap between page sections
   6: 24px # the page padding, and the transcript gap between exchanges
 components:
-  # Import the real primitives from @turium-assignment/ui; these entries only fix the defaults.
+  # Import the real primitives from @/components/ui; these entries only fix the defaults.
   button-default:
     height: 32px # h-8; xs 24, sm 28, lg 36; icon-xs 24, icon-sm 28, icon 32, icon-lg 36
     rounded: "{rounded.md}"
@@ -226,7 +226,7 @@ answer is almost always no.
 
 This file documents both themes; light and dark are the same tokens with different values,
 so writing tokens gets dark mode for free. Everything here comes from
-`packages/ui/src/styles/globals.css`, the `packages/ui` primitives, and the product
+`apps/web/src/index.css`, the `apps/web/src/components/ui` primitives, and the product
 surfaces under `apps/web/src`. The off-theme colour families in the frontmatter are
 Tailwind palette utilities and literals, not tokens, and are annotated as such. The
 `/admin` and `/settings` routes were excluded from this pass.
@@ -234,7 +234,7 @@ Tailwind palette utilities and literals, not tokens, and are annotated as such. 
 ## Consumption
 
 Tailwind v4, no `tailwind.config`. Tokens are CSS custom properties in
-`packages/ui/src/styles/globals.css`: raw values in `:root` and `.dark`, exposed as
+`apps/web/src/index.css`: raw values in `:root` and `.dark`, exposed as
 utilities through the `@theme inline` block. So each token has exactly one binding:
 
 - Colors: `bg-background`, `text-muted-foreground`, `border-border`, `ring-ring`. Reach
@@ -245,8 +245,7 @@ utilities through the `@theme inline` block. So each token has exactly one bindi
   `bg-destructive/5`, `ring-foreground/10`, `text-sidebar-foreground/60`. Do not add a new
   colour token for a tint.
 - Fonts: `font-sans` (already set on `html` and `body`), `font-mono` for code and raw
-  text. There is no `--font-mono` token and no webfont; `@fontsource-variable/inter` is a
-  dead dependency of `packages/ui`.
+  text. There is no `--font-mono` token and no webfont.
 
 `@layer base` sets more than you might expect, so don't restate it: `body` is
 `font-sans text-sm font-normal bg-background text-foreground`, `html` is antialiased, `*`
@@ -254,15 +253,15 @@ gets `border-border outline-ring/50`, and **scrollbars are hidden globally**
 (`scrollbar-width: none` plus a `::-webkit-scrollbar` reset). A scroll region needs its
 own affordance, which is why `scroll-fade-b` and the scroll-to-bottom button exist.
 
-Shared primitives live in `@turium-assignment/ui` and import one per file:
-`import { Button } from "@turium-assignment/ui/components/button"`. The same for `card`, `input`,
+Shared primitives live in `apps/web/src/components/ui` and import one per file:
+`import { Button } from "@/components/ui/button"`. The same for `card`, `input`,
 `textarea`, `badge`, `dialog`, `alert-dialog`, `dropdown-menu`, `popover`, `select`,
 `tabs`, `table`, `pagination`, `empty`, `skeleton`, `spinner`, `tooltip`, `sidebar`,
 `sheet`, `input-group`, `native-select`, `command`, `kbd`, `avatar`, `attachment`, `item`,
 `marker`, `bubble`, `message`, `message-scroller`. Class merging is `cn` from
-`@turium-assignment/ui/lib/utils`, which re-exports the `cn` package (not `clsx` + `tailwind-merge`),
+`@/lib/utils`, which re-exports the `cn` package (not `clsx` + `tailwind-merge`),
 so conflicting utilities are **not** reliably deduped by later-wins order. Build a
-primitive from scratch only if `packages/ui/src/components` has no equivalent.
+primitive from scratch only if `apps/web/src/components/ui` has no equivalent.
 
 Most primitives are Base UI (`@base-ui/react`); the command palette is `cmdk`, the
 transcript scroller is `@shadcn/react`, markdown is `streamdown`, and the emoji picker is
@@ -328,7 +327,7 @@ The scale is semantic, not numeric. What each token is for:
   against grey in light, `#181818` against `#121212` in dark. Inside the sidebar use the
   `sidebar-*` tokens, and derive its quieter text with `text-sidebar-foreground/60` and
   `/45` rather than reaching for `muted-foreground`.
-- `chart-1` … `chart-5` are a blue ramp used only by `@turium-assignment/ui/components/chart`.
+- `chart-1` … `chart-5` are a blue ramp used only by `@/components/ui/chart`.
 
 Four colour families sit deliberately **outside** the theme. They are Tailwind palette
 utilities or literals, so they do not respond to light/dark beyond the `dark:` variants
@@ -861,7 +860,7 @@ back.`
 - Do use `ring-1 ring-foreground/10` for a surface that floats and a `border` for one that
   sits in the page. Don't add a shadow for emphasis, and don't put a ring on a form
   control.
-- Do import from `@turium-assignment/ui/components/*`. Don't hand-roll a button, input, dialog,
+- Do import from `@/components/ui/*`. Don't hand-roll a button, input, dialog,
   skeleton, table, or empty state. If a primitive is close but wrong, add a variant to it
   rather than a wall of `!` overrides at the call site.
 - Do put screen-level controls in `HeaderSlot`. Don't render a second header inside a

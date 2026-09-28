@@ -1,13 +1,13 @@
 # turium
 
-A TypeScript monorepo that combines Next.js, Express, and more.
+A TypeScript monorepo that combines Vite, React, Express, and more.
 
 ## Features
 
 - **TypeScript** - For type safety and improved developer experience
-- **Next.js** - Full-stack React framework
+- **Vite + React** - Frontend with TanStack Router and TanStack Query
 - **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
+- **shadcn/ui** - primitives live in `apps/web/src/components/ui`
 - **Express** - Fast, unopinionated web framework
 - **Node.js** - Runtime environment
 - **Oxlint** - Oxlint + Oxfmt (linting & formatting)
@@ -32,37 +32,31 @@ The API is running at [http://localhost:3000](http://localhost:3000).
 
 ## UI Customization
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
+shadcn/ui primitives live in `apps/web`.
 
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
+- Change design tokens and global styles in `apps/web/src/index.css`
+- Update primitives in `apps/web/src/components/ui/*`
+- Adjust shadcn aliases or style config in `apps/web/components.json`
 
-### Add more shared components
-
-Run this from the project root to add more primitives to the shared UI package:
+### Add more components
 
 ```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
+npx shadcn@latest add accordion dialog popover sheet table -c apps/web
 ```
 
-Import shared components like this:
+Import components like this:
 
 ```tsx
-import { Button } from "@turium-assignment/ui/components/button";
+import { Button } from "@/components/ui/button";
 ```
-
-### Add app-specific blocks
-
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
 
 ## Environment Configuration
 
-Each app owns its environment schema in `.env.schema`. Varlock generates `src/env.ts` during installation; run `pnpm run env:generate` after changing a schema. Commit schemas, and keep secrets in ignored env files or your deployment platform.
+The server owns its environment schema in `apps/server/.env.schema`. Varlock generates `src/env.ts` during installation; run `pnpm run env:generate` after changing a schema. Commit schemas, and keep secrets in ignored env files or your deployment platform.
 
 Import the generated `ENV` accessor in application code. See [Varlock's monorepo guide](https://varlock.dev/guides/monorepos/).
 
-Bun's automatic env loading is disabled in `bunfig.toml`; the framework integration or server bootstrap loads Varlock. Node deployments must include Varlock and its dependencies alongside the app schema.
+The server bootstrap loads Varlock. Node deployments must include Varlock and its dependencies alongside the app schema.
 
 ## Git Hooks and Formatting
 
@@ -80,10 +74,11 @@ outside a git repository. After `git init`, run `pnpm install` once to install i
 ```
 turium-assignment/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
+│   ├── web/         # Frontend application (Vite + React)
 │   └── server/      # Backend REST API (Express)
 ├── packages/
-│   └── ui/          # Shared shadcn/ui components and styles
+│   ├── contracts/   # Zod schemas shared by server and web
+│   └── config/      # Shared tsconfig
 ```
 
 ## Available Scripts
