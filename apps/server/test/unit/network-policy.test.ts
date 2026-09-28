@@ -16,6 +16,7 @@ describe("defaultNetworkPolicy", () => {
     "fe80::1",
     "fc00::1",
     "::ffff:127.0.0.1",
+    "::7f00:1",
   ])("blocks %s", (address) => {
     expect(defaultNetworkPolicy.blocks(address)).toBe(true);
   });

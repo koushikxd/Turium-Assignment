@@ -57,7 +57,7 @@ async function fetchFollowingRedirects(start: URL, policy: NetworkPolicy, signal
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       throw new ItemFailure("URL_BLOCKED", "A redirect pointed to a non-HTTP URL.");
     }
-    if (!(await isUrlAllowed(url, policy))) {
+    if (!(await isUrlAllowed(url, policy, signal))) {
       throw new ItemFailure("URL_BLOCKED", "The URL or a redirect resolves to a blocked address.");
     }
     const response = await fetch(url, { redirect: "manual", signal });

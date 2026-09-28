@@ -16,8 +16,7 @@ for (const [network, prefix] of [
   blockList.addSubnet(network, prefix, "ipv4");
 }
 for (const [network, prefix] of [
-  ["::", 128], // unspecified
-  ["::1", 128], // loopback
+  ["::", 96], // unspecified, loopback and deprecated IPv4-compatible (::7f00:1)
   ["fc00::", 7], // unique local
   ["fe80::", 10], // link-local
 ] as const) {
@@ -31,8 +30,13 @@ export const defaultNetworkPolicy: NetworkPolicy = {
 
 // A hostname that does not resolve is allowed here: the fetch then fails as
 // FETCH_FAILED, so the user sees it on the item (ARCHITECTURE §5.2).
-export async function isUrlAllowed(url: URL, policy: NetworkPolicy) {
+// lookup() takes no signal, so the fetcher's timeout is raced against it.
+export async function isUrlAllowed(url: URL, policy: NetworkPolicy, signal?: AbortSignal) {
+  signal?.throwIfAborted();
   const hostname = url.hostname.replace(/^\[(.*)\]$/, "$1");
-  const addresses = await lookup(hostname, { all: true }).catch(() => []);
+  const aborted = new Promise<never>((_, reject) =>
+    signal?.addEventListener("abort", () => reject(signal.reason), { once: true }),
+  );
+  const addresses = await Promise.race([lookup(hostname, { all: true }).catch(() => []), aborted]);
   return !addresses.some(({ address }) => policy.blocks(address));
 }
