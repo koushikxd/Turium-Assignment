@@ -1,35 +1,61 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { describe, expect, it } from "vitest";
 
-import { linkCitations, type QueryMessage, toQueryRequest } from "@/lib/chat";
+import { type QueryMessage, remarkCitations, toQueryRequest } from "@/lib/chat";
 
-describe("linkCitations", () => {
-  const ns = new Set([1, 2, 3]);
+// Rendered through react-markdown, as the chat does, so markdown decides what is code or a link.
+function render(markdown: string, ns: ReadonlySet<number> = new Set([1, 2, 3])) {
+  return renderToStaticMarkup(
+    createElement(ReactMarkdown, { remarkPlugins: [remarkGfm, [remarkCitations, ns]] }, markdown),
+  );
+}
 
+describe("remarkCitations", () => {
   it("links a single marker", () => {
-    expect(linkCitations("Paris is the capital [1].", ns)).toBe(
-      "Paris is the capital [1](#cite-1).",
+    expect(render("Paris is the capital [1].")).toBe(
+      '<p>Paris is the capital <a href="#cite-1">1</a>.</p>',
     );
   });
 
   it("splits a grouped marker into one link per source", () => {
-    expect(linkCitations("Both agree [1, 3].", ns)).toBe("Both agree [1](#cite-1)[3](#cite-3).");
+    expect(render("Both agree [1, 3].")).toBe(
+      '<p>Both agree <a href="#cite-1">1</a><a href="#cite-3">3</a>.</p>',
+    );
   });
 
   it("leaves a marker for an unknown source as text", () => {
-    expect(linkCitations("Made up [9].", ns)).toBe("Made up [9].");
+    expect(render("Made up [9].")).toBe("<p>Made up [9].</p>");
   });
 
   it("links the valid numbers of a mixed group and keeps the rest as text", () => {
-    expect(linkCitations("Mixed [1, 9, 2].", ns)).toBe("Mixed [1](#cite-1)[9][2](#cite-2).");
+    expect(render("Mixed [1, 9, 2].")).toBe(
+      '<p>Mixed <a href="#cite-1">1</a>[9]<a href="#cite-2">2</a>.</p>',
+    );
   });
 
   it("links nothing when there are no sources", () => {
-    expect(linkCitations("No sources [1].", new Set())).toBe("No sources [1].");
+    expect(render("No sources [1].", new Set())).toBe("<p>No sources [1].</p>");
   });
 
   it("leaves non-numeric brackets and markdown links alone", () => {
-    const text = "As noted [see above], read [the docs](https://x.dev) or [2](https://y.dev).";
-    expect(linkCitations(text, ns)).toBe(text);
+    expect(
+      render("As noted [see above], read [the docs](https://x.dev) or [2](https://y.dev)."),
+    ).toBe(
+      '<p>As noted [see above], read <a href="https://x.dev">the docs</a> or <a href="https://y.dev">2</a>.</p>',
+    );
+  });
+
+  it("leaves markers in inline code and code blocks alone", () => {
+    expect(render("Use `arr[1]` here [1].\n\n```\na[2]\n```")).toBe(
+      '<p>Use <code>arr[1]</code> here <a href="#cite-1">1</a>.</p>\n<pre><code>a[2]\n</code></pre>',
+    );
+  });
+
+  it("does not nest a citation inside a link", () => {
+    expect(render("[see [1]](https://x.dev)")).toBe('<p><a href="https://x.dev">see [1]</a></p>');
   });
 });
 

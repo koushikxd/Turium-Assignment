@@ -25,15 +25,42 @@ export function toQueryRequest(messages: QueryMessage[]): QueryRequest {
   return { question, history };
 }
 
-// `[1]` or `[1, 3]`, but not the text of a markdown link like `[2](https://...)`.
-const MARKER = /\[(\d+(?:\s*,\s*\d+)*)\](?!\()/g;
+// `[1]` or `[1, 3]`.
+const MARKER = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
 
-export function linkCitations(text: string, ns: ReadonlySet<number>): string {
-  return text.replace(MARKER, (_, group: string) =>
-    group
-      .split(",")
-      .map((s) => Number(s.trim()))
-      .map((n) => (ns.has(n) ? `[${n}](#cite-${n})` : `[${n}]`))
-      .join(""),
-  );
+// The mdast fields this plugin touches. @types/mdast is not a direct dependency.
+type MdNode = { type: string; value?: string; url?: string; children?: MdNode[] };
+
+// A remark plugin that turns markers into `#cite-n` links, for an `n` in `ns`. It runs on
+// the parsed tree, so brackets in code, and in the text of an existing link, stay as they are.
+export function remarkCitations(ns: ReadonlySet<number>) {
+  return (tree: MdNode) => linkMarkers(tree, ns);
+}
+
+function linkMarkers(node: MdNode, ns: ReadonlySet<number>) {
+  if (!node.children || node.type === "link" || node.type === "linkReference") return;
+  node.children = node.children.flatMap((child) => {
+    if (child.type === "text") return splitMarkers(child.value ?? "", ns);
+    linkMarkers(child, ns);
+    return [child];
+  });
+}
+
+function splitMarkers(text: string, ns: ReadonlySet<number>): MdNode[] {
+  const nodes: MdNode[] = [];
+  let last = 0;
+  for (const match of text.matchAll(MARKER)) {
+    const [marker, group = ""] = match;
+    nodes.push({ type: "text", value: text.slice(last, match.index) });
+    for (const n of group.split(",").map((s) => Number(s.trim()))) {
+      nodes.push(
+        ns.has(n)
+          ? { type: "link", url: `#cite-${n}`, children: [{ type: "text", value: String(n) }] }
+          : { type: "text", value: `[${n}]` },
+      );
+    }
+    last = match.index + marker.length;
+  }
+  nodes.push({ type: "text", value: text.slice(last) });
+  return nodes;
 }

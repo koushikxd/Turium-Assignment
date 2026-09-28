@@ -7,7 +7,7 @@ import { CitationChip } from "@/components/chat/citation-chip";
 import { Sources } from "@/components/chat/sources";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Message, MessageContent } from "@/components/ui/message";
-import { linkCitations, messageText, type QueryMessage } from "@/lib/chat";
+import { messageText, type QueryMessage, remarkCitations } from "@/lib/chat";
 
 const SourcesContext = createContext<QuerySource[]>([]);
 
@@ -28,8 +28,6 @@ function MarkdownLink({ href, children }: ComponentProps<"a">) {
 function Heading({ children }: { children?: ReactNode }) {
   return <h3 className="mt-6 mb-2 text-base font-semibold">{children}</h3>;
 }
-
-const REMARK_PLUGINS = [remarkGfm];
 
 const MARKDOWN_COMPONENTS: Components = {
   p: ({ children }) => <p className="my-3 first:mt-0 last:mb-0">{children}</p>,
@@ -71,8 +69,11 @@ function AssistantMessage({ text, sources }: { text: string; sources: QuerySourc
         {text ? (
           <SourcesContext value={sources}>
             <div>
-              <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={MARKDOWN_COMPONENTS}>
-                {linkCitations(text, new Set(sources.map((s) => s.n)))}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, [remarkCitations, new Set(sources.map((s) => s.n))]]}
+                components={MARKDOWN_COMPONENTS}
+              >
+                {text}
               </ReactMarkdown>
             </div>
           </SourcesContext>
