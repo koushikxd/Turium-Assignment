@@ -224,8 +224,10 @@ hue per knowledge-base file kind, amber/yellow/emerald for index status, and sat
 generated faces for identity. Everything else is grey. If a new surface wants colour, the
 answer is almost always no.
 
-This file documents both themes; light and dark are the same tokens with different values,
-so writing tokens gets dark mode for free. Everything here comes from
+The app renders dark only: `apps/web/index.html` sets `class="dark"` and
+`color-scheme: dark` on `<html>`, so the `.dark` values and `dark:` variants always apply.
+The light values in `:root` are kept as the shadcn baseline but never render; there is no
+theme toggle. This file still documents both themes. Everything here comes from
 `apps/web/src/index.css`, the `apps/web/src/components/ui` primitives, and the product
 surfaces under `apps/web/src`. The off-theme colour families in the frontmatter are
 Tailwind palette utilities and literals, not tokens, and are annotated as such. The
@@ -264,7 +266,7 @@ so conflicting utilities are **not** reliably deduped by later-wins order. Build
 primitive from scratch only if `apps/web/src/components/ui` has no equivalent.
 
 Most primitives are Base UI (`@base-ui/react`); the command palette is `cmdk`, the
-transcript scroller is `@shadcn/react`, markdown is `streamdown`, and the emoji picker is
+transcript scroller is `@shadcn/react`, markdown is `react-markdown` with `remark-gfm`, and the emoji picker is
 `frimousse`. Spring and layout animation is `motion` (`motion/react`), used in
 `nav-connectors`, `nav-projects`, `upload-dialog`, `file-preview`, `composer-connectors`,
 `command`, and `toast`. CSS-first for anything that can be CSS; `motion` when the value is
@@ -278,13 +280,12 @@ variants the Base UI primitives are styled with. Turium's own `@utility` set liv
 `globals.css`: `animate-shimmer`, `animate-reveal`, `animate-reaction`, `animate-metric`,
 `animate-link-preview`, each with a `prefers-reduced-motion` branch built in.
 
-Icons are Hugeicons, always the same two-part import:
+Icons are `lucide-react`, imported by name:
 
 ```tsx
-import { Search01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { SearchIcon } from "lucide-react";
 
-<HugeiconsIcon icon={Search01Icon} className="size-3.5" />;
+<SearchIcon className="size-3.5" />;
 ```
 
 `size-3.5` (14px) is the inline icon in product screens; primitives default their own
@@ -604,7 +605,7 @@ screen, is `<EmptyMedia variant="icon" className="size-11 rounded-2xl [&_svg]:si
 `rounded-xl` and size it to the row it stands in (`h-14` for a chat row, `h-16` for a cron
 row, `h-3.5` for a table cell).
 
-**Spinner** 16px spinning Hugeicon with `role="status"`. Inside a button, pass
+**Spinner** 16px spinning lucide icon with `role="status"`. Inside a button, pass
 `data-icon="inline-start"` and swap it in for the leading icon while pending.
 
 **Tabs** always `<TabsList variant="line">`, rendered only when more than one tab is
@@ -747,13 +748,14 @@ only to beat the primitive; if you touch this, add a bubble variant instead of a
 leading-[1.625rem]`) on user bubbles and absolutely positioned (`absolute right-4
 bottom-2` over `pb-7!`) on assistant ones.
 
-Assistant prose is `Bubble variant="ghost"` wrapping `Streamdown` at `text-base`;
+Assistant prose is `Bubble variant="ghost"` wrapping `react-markdown` at `text-base`;
 `assistant-markdown.tsx` overrides only `h1`–`h6` (all to `mt-6 mb-2 text-base
-font-semibold`) and `a`, so every other element is a Streamdown default. Below the prose
+font-semibold`) and `a`. react-markdown ships no styles, so Turium's `chat-message.tsx` also
+styles `p`, lists, `pre` and `code` with Tailwind classes. Below the prose
 sit a thinking trace, a sources disclosure, and a `MessageActions` row that reveals on
 `group-hover/message`.
 
-**Composer.** `InputGroup` at `rounded-3xl dark:bg-sidebar`. All text metrics live in one
+**Composer.** `InputGroup` at `rounded-3xl bg-sidebar`. All text metrics live in one
 constant (`px-3.5 pt-3.5 pb-2 text-base sm:px-4 sm:pt-4 md:text-base`) applied to both the
 textarea and the mention mirror behind it: the textarea is `text-transparent
 caret-foreground` so the mirror can paint mention chips. Controls sit in an
