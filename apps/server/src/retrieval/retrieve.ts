@@ -1,7 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
-import { TOP_K, VECTOR_K } from "./config";
+import { KEYWORD_K, TOP_K, VECTOR_K } from "./config";
+import { keywordSearch } from "./keyword-search";
+import { rrf } from "./rrf";
 import { vectorSearch } from "./vector-search";
 
 const chunkRow = z.object({
@@ -12,12 +14,18 @@ const chunkRow = z.object({
   text: z.string(),
 });
 
-export type RetrievedChunk = z.infer<typeof chunkRow> & { vectorRank: number };
+export type RetrievedChunk = z.infer<typeof chunkRow> & {
+  vectorRank: number | null;
+  keywordRank: number | null;
+  score: number;
+};
 
-// Best first. `text` is the query itself, unused until keyword search joins in task 07.
-// No status filter: chunks exist only for ready items (ARCHITECTURE §5.5).
+// Best first. No status filter: chunks exist only for ready items (ARCHITECTURE §5.5).
 export function retrieve(db: DatabaseSync, query: { text: string; embedding: number[] }) {
-  const hits = vectorSearch(db, query.embedding, VECTOR_K).slice(0, TOP_K);
+  const hits = rrf([
+    vectorSearch(db, query.embedding, VECTOR_K),
+    keywordSearch(db, query.text, KEYWORD_K),
+  ]).slice(0, TOP_K);
   if (hits.length === 0) return [];
 
   const rows = db
@@ -30,8 +38,9 @@ export function retrieve(db: DatabaseSync, query: { text: string; embedding: num
     .map((row) => chunkRow.parse(row));
   const byId = new Map(rows.map((row) => [row.chunkId, row]));
 
-  return hits.flatMap((hit) => {
+  return hits.flatMap((hit): RetrievedChunk[] => {
     const row = byId.get(hit.chunkId);
-    return row ? [{ ...row, vectorRank: hit.rank }] : [];
+    const [vectorRank = null, keywordRank = null] = hit.ranks;
+    return row ? [{ ...row, vectorRank, keywordRank, score: hit.score }] : [];
   });
 }
