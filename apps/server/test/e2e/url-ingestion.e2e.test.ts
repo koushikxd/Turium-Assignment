@@ -63,15 +63,18 @@ describe("POST /ingest (url)", () => {
     await app.close();
   });
 
-  test.each(["http://127.0.0.1:9/article", "http://169.254.169.254/latest/meta-data/"])(
-    "%s is a 422 under the default policy, and no item is created",
-    async (url) => {
-      const app = await startApp({ networkPolicy: defaultNetworkPolicy });
-      await expectProblem(await postIngest(app.url, { type: "url", url }), 422, "URL_NOT_ALLOWED");
-      expect(await listItems(app.url)).toEqual([]);
-      await app.close();
-    },
-  );
+  test.each([
+    "http://127.0.0.1:9/article",
+    "http://169.254.169.254/latest/meta-data/",
+    "http://2130706433/",
+    "http://0177.0.0.1/",
+    "http://0x7f000001/",
+  ])("%s is a 422 under the default policy, and no item is created", async (url) => {
+    const app = await startApp({ networkPolicy: defaultNetworkPolicy });
+    await expectProblem(await postIngest(app.url, { type: "url", url }), 422, "URL_NOT_ALLOWED");
+    expect(await listItems(app.url)).toEqual([]);
+    await app.close();
+  });
 
   test("a redirect to a blocked address ends failed with URL_BLOCKED", async () => {
     const app = await startApp();
@@ -81,7 +84,16 @@ describe("POST /ingest (url)", () => {
     await app.close();
   });
 
+  test("a redirect to a file: URL ends failed with URL_BLOCKED", async () => {
+    const app = await startApp();
+    const item = await ingestUrl(app.url, `${fixture.url}/redirect-file`);
+    const failed = await waitForItem(app.url, item.id, (found) => found.status === "failed");
+    expect(failed.error?.code).toBe("URL_BLOCKED");
+    await app.close();
+  });
+
   test.each([
+    ["/missing", "FETCH_FAILED", {}],
     ["/file.pdf", "UNSUPPORTED_CONTENT_TYPE", {}],
     ["/large", "CONTENT_TOO_LARGE", {}],
     ["/slow", "FETCH_TIMEOUT", { fetchTimeoutMs: 200 }],
@@ -106,6 +118,29 @@ describe("POST /ingest (url)", () => {
         app.db.prepare("SELECT length(content) AS length FROM items WHERE id = ?").get(item.id),
       );
     expect(length).toBe(100_000);
+    await app.close();
+  });
+
+  test("the cut never splits a surrogate pair", async () => {
+    const app = await startApp();
+    const item = await ingestUrl(app.url, `${fixture.url}/emoji.txt`);
+    const ready = await waitForItem(app.url, item.id, (found) => found.status === "ready");
+    expect(ready.truncated).toBe(true);
+    const { content } = z
+      .object({ content: z.string() })
+      .parse(app.db.prepare("SELECT content FROM items WHERE id = ?").get(item.id));
+    expect(content).toBe("a".repeat(99_999));
+    await app.close();
+  });
+
+  test("a text/plain body is decoded with its declared charset", async () => {
+    const app = await startApp();
+    const item = await ingestUrl(app.url, `${fixture.url}/windows-1252.txt`);
+    await waitForItem(app.url, item.id, (found) => found.status === "ready");
+    const { content } = z
+      .object({ content: z.string() })
+      .parse(app.db.prepare("SELECT content FROM items WHERE id = ?").get(item.id));
+    expect(content).toBe("caf\u00e9");
     await app.close();
   });
 

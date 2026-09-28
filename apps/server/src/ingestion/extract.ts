@@ -57,7 +57,14 @@ export function extract(page: FetchedPage): Extraction {
   if (text === "") {
     throw new ItemFailure("EXTRACTION_EMPTY", "No readable text was found at the URL.");
   }
-  return { title, text: text.slice(0, MAX_CHARS), truncated: text.length > MAX_CHARS };
+  return { title, text: truncate(text), truncated: text.length > MAX_CHARS };
+}
+
+// Cuts one char earlier when the cut would split a UTF-16 surrogate pair.
+function truncate(text: string) {
+  const code = text.charCodeAt(MAX_CHARS - 1);
+  const end = code >= 0xd800 && code <= 0xdbff ? MAX_CHARS - 1 : MAX_CHARS;
+  return text.slice(0, end);
 }
 
 function extractHtml(html: string) {

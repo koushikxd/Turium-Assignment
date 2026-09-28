@@ -60,6 +60,22 @@ const routes = new Map<string, (res: ServerResponse) => void>([
     (res) =>
       res.writeHead(200, { "content-type": "text/plain" }).end("lorem ipsum ".repeat(10_000)),
   ],
+  // The 100,000-char cut lands between the two UTF-16 halves of the emoji.
+  [
+    "/emoji.txt",
+    (res) =>
+      res
+        .writeHead(200, { "content-type": "text/plain" })
+        .end(`${"a".repeat(99_999)}\u{1F600} and more text`),
+  ],
+  ["/redirect-file", (res) => res.writeHead(302, { location: "file:///etc/passwd" }).end()],
+  [
+    "/windows-1252.txt",
+    (res) =>
+      res
+        .writeHead(200, { "content-type": "text/plain; charset=windows-1252" })
+        .end(Buffer.from([0x63, 0x61, 0x66, 0xe9])),
+  ],
 ]);
 
 export async function startFixtureServer() {
