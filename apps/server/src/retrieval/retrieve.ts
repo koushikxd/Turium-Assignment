@@ -2,9 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
 import { KEYWORD_K, TOP_K, VECTOR_K } from "./config";
-import { keywordSearch } from "./keyword-search";
+import { keywordSearch, vectorSearch } from "./chunk-index";
 import { rrf } from "./rrf";
-import { vectorSearch } from "./vector-search";
 
 const chunkRow = z.object({
   chunkId: z.number().int(),

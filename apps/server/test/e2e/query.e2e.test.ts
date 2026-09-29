@@ -2,7 +2,7 @@ import { citationsData, ingestResponse } from "@turium-assignment/contracts";
 import { describe, expect, test, vi } from "vitest";
 
 import { KEYWORD_K } from "../../src/retrieval/config";
-import { keywordSearch } from "../../src/retrieval/keyword-search";
+import { keywordSearch } from "../../src/retrieval/chunk-index";
 import {
   expectProblem,
   partOf,

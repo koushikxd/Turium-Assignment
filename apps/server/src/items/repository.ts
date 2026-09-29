@@ -3,7 +3,8 @@ import type { ItemFailureCode } from "@turium-assignment/contracts";
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
-const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+import { immediate, NOW } from "../db/sql";
+import { deleteChunks, writeChunks } from "../retrieval/chunk-index";
 
 const ITEM_COLUMNS = `
   id, type, title, url, status, error_code, error_message, truncated,
@@ -57,18 +58,6 @@ function getItem(db: DatabaseSync, id: number) {
   return itemRow.parse(db.prepare(`SELECT ${ITEM_COLUMNS} FROM items WHERE id = ?`).get(id));
 }
 
-function immediate<T>(db: DatabaseSync, work: () => T) {
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    const result = work();
-    db.exec("COMMIT");
-    return result;
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
-}
-
 type NewItem = {
   type: "note" | "url";
   title: string | null;
@@ -101,13 +90,9 @@ export function listItems(db: DatabaseSync) {
     .map((row) => itemRow.parse(row));
 }
 
-// Virtual tables ignore foreign keys, so their rows go first, by chunk id.
-// The cascade then removes the chunks with the item.
 export function deleteItem(db: DatabaseSync, id: number) {
   return immediate(db, () => {
-    const chunkIds = "SELECT id FROM chunks WHERE item_id = ?";
-    db.prepare(`DELETE FROM chunk_vectors WHERE rowid IN (${chunkIds})`).run(id);
-    db.prepare(`DELETE FROM chunks_fts WHERE rowid IN (${chunkIds})`).run(id);
+    deleteChunks(db, id);
     return db.prepare("DELETE FROM items WHERE id = ?").run(id).changes > 0;
   });
 }
@@ -168,15 +153,7 @@ export function commitChunks(
       .run(itemId);
     if (ready.changes === 0) return false;
 
-    const insertChunk = db.prepare("INSERT INTO chunks (item_id, ordinal, text) VALUES (?, ?, ?)");
-    const insertVector = db.prepare("INSERT INTO chunk_vectors (rowid, embedding) VALUES (?, ?)");
-    const insertFts = db.prepare("INSERT INTO chunks_fts (rowid, body) VALUES (?, ?)");
-    for (const [ordinal, text] of texts.entries()) {
-      // vec0 rejects a rowid bound as a JS number (ARCHITECTURE §4).
-      const chunkId = BigInt(insertChunk.run(itemId, ordinal, text).lastInsertRowid);
-      insertVector.run(chunkId, new Float32Array(embeddings[ordinal] ?? []));
-      insertFts.run(chunkId, text);
-    }
+    writeChunks(db, itemId, texts, embeddings);
     return true;
   });
 }

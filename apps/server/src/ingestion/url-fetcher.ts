@@ -1,6 +1,6 @@
 import { isUrlAllowed } from "./network-policy";
 import type { NetworkPolicy } from "./network-policy";
-import { ItemFailure } from "./pipeline";
+import { ItemFailure } from "./item-failure";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_REDIRECTS = 5;

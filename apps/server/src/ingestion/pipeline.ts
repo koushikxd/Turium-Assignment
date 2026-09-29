@@ -1,4 +1,3 @@
-import type { ItemFailureCode } from "@turium-assignment/contracts";
 import { embedMany } from "ai";
 import type { EmbeddingModel } from "ai";
 import { createLogger } from "evlog";
@@ -8,18 +7,8 @@ import { commitChunks, markFailed, saveExtraction } from "../items/repository";
 import type { ClaimedItem } from "../items/repository";
 import { chunk } from "./chunker";
 import { extract } from "./extract";
+import { ItemFailure } from "./item-failure";
 import type { FetchUrl } from "./url-fetcher";
-
-// A failure the user sees on the item. The message is ours; the cause is only logged.
-export class ItemFailure extends Error {
-  constructor(
-    readonly code: ItemFailureCode,
-    message: string,
-    options?: ErrorOptions,
-  ) {
-    super(message, options);
-  }
-}
 
 export async function processItem(
   db: DatabaseSync,
