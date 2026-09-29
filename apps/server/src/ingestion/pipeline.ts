@@ -19,6 +19,7 @@ export async function processItem(
 ) {
   const log = createLogger({ job: "ingestion", itemId: item.id, type: item.type });
   try {
+    let title: string | null;
     let content: string;
     let started = performance.now();
     if (item.type === "url") {
@@ -26,11 +27,13 @@ export async function processItem(
       log.set({ fetchMs: elapsed(started), bytes: page.bytes });
 
       started = performance.now();
-      const { title, text, truncated } = extract(page);
-      saveExtraction(db, item.id, { title, content: text, truncated });
+      const { title: pageTitle, text, truncated } = extract(page);
+      saveExtraction(db, item.id, { title: pageTitle, content: text, truncated });
       log.set({ extractMs: elapsed(started), truncated });
+      title = pageTitle;
       content = text;
     } else {
+      title = item.title;
       content = item.content;
     }
 
@@ -49,7 +52,7 @@ export async function processItem(
     log.set({ embedMs: elapsed(started), tokens: usage.tokens });
 
     started = performance.now();
-    const committed = commitChunks(db, item.id, texts, embeddings);
+    const committed = commitChunks(db, item.id, title, texts, embeddings);
     log.set({ commitMs: elapsed(started), outcome: committed ? "ready" : "deleted" });
   } catch (cause) {
     const failure =

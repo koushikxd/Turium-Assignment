@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { describe, expect, it } from "vitest";
 
-import { type QueryMessage, remarkCitations, toQueryRequest } from "@/lib/chat";
+import { listedSources, type QueryMessage, remarkCitations, toQueryRequest } from "@/lib/chat";
 
 // Rendered through react-markdown, as the chat does, so markdown decides what is code or a link.
 function render(markdown: string, ns: ReadonlySet<number> = new Set([1, 2, 3])) {
@@ -102,5 +102,39 @@ describe("toQueryRequest", () => {
   it("slices history content to 8000 characters", () => {
     const req = toQueryRequest([msg("1", "assistant", "a".repeat(9000)), msg("2", "user", "q")]);
     expect(req.history[0]?.content).toHaveLength(8000);
+  });
+});
+
+function source(n: number) {
+  return { n, chunkId: n, itemId: n, title: null, url: null, snippet: `s${n}` };
+}
+
+function answer(citations?: number[]): QueryMessage {
+  return {
+    id: "a",
+    role: "assistant",
+    parts: [
+      { type: "data-sources", data: { query: "q", sources: [source(1), source(2), source(3)] } },
+      { type: "text", text: "answer" },
+      ...(citations ? [{ type: "data-citations" as const, data: { citations } }] : []),
+    ],
+  };
+}
+
+describe("listedSources", () => {
+  it("lists every retrieved source while the answer streams", () => {
+    expect(listedSources(answer()).map((s) => s.n)).toEqual([1, 2, 3]);
+  });
+
+  it("lists only the cited sources once citations arrive", () => {
+    expect(listedSources(answer([3, 1])).map((s) => s.n)).toEqual([1, 3]);
+  });
+
+  it("lists nothing when the finished answer cites nothing", () => {
+    expect(listedSources(answer([]))).toEqual([]);
+  });
+
+  it("lists nothing before sources arrive", () => {
+    expect(listedSources({ id: "a", role: "assistant", parts: [] })).toEqual([]);
   });
 });

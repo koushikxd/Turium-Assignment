@@ -6,7 +6,12 @@ import { immediate, NOW } from "../db/sql";
 import { writeChunks } from "../retrieval/chunk-index";
 
 const claimedRow = z.discriminatedUnion("type", [
-  z.object({ id: z.number().int(), type: z.literal("note"), content: z.string() }),
+  z.object({
+    id: z.number().int(),
+    type: z.literal("note"),
+    title: z.string().nullable(),
+    content: z.string(),
+  }),
   z.object({ id: z.number().int(), type: z.literal("url"), url: z.string() }),
 ]);
 export type ClaimedItem = z.infer<typeof claimedRow>;
@@ -16,7 +21,7 @@ export function claimNextItem(db: DatabaseSync) {
     .prepare(
       `UPDATE items SET status = 'processing', updated_at = ${NOW}
        WHERE id = (SELECT id FROM items WHERE status = 'pending' ORDER BY id LIMIT 1)
-       RETURNING id, type, content, url`,
+       RETURNING id, type, title, content, url`,
     )
     .get();
   return row ? claimedRow.parse(row) : undefined;
@@ -55,6 +60,7 @@ export function markFailed(db: DatabaseSync, id: number, code: ItemFailureCode, 
 export function commitChunks(
   db: DatabaseSync,
   itemId: number,
+  title: string | null,
   texts: string[],
   embeddings: number[][],
 ) {
@@ -67,7 +73,7 @@ export function commitChunks(
       .run(itemId);
     if (ready.changes === 0) return false;
 
-    writeChunks(db, itemId, texts, embeddings);
+    writeChunks(db, itemId, title, texts, embeddings);
     return true;
   });
 }

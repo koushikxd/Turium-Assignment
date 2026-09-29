@@ -7,7 +7,7 @@ import { CitationChip } from "@/components/chat/citation-chip";
 import { Sources } from "@/components/chat/sources";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Message, MessageContent } from "@/components/ui/message";
-import { messageText, type QueryMessage, remarkCitations } from "@/lib/chat";
+import { listedSources, messageText, type QueryMessage, remarkCitations } from "@/lib/chat";
 
 const SourcesContext = createContext<QuerySource[]>([]);
 
@@ -62,7 +62,15 @@ function UserMessage({ text }: { text: string }) {
   );
 }
 
-function AssistantMessage({ text, sources }: { text: string; sources: QuerySource[] }) {
+function AssistantMessage({
+  text,
+  sources,
+  listed,
+}: {
+  text: string;
+  sources: QuerySource[];
+  listed: QuerySource[];
+}) {
   return (
     <Message>
       <MessageContent className="gap-3 text-base leading-relaxed">
@@ -78,7 +86,7 @@ function AssistantMessage({ text, sources }: { text: string; sources: QuerySourc
             </div>
           </SourcesContext>
         ) : null}
-        <Sources sources={sources} />
+        <Sources sources={listed} />
       </MessageContent>
     </Message>
   );
@@ -88,5 +96,5 @@ export const ChatMessage = memo(function ChatMessage({ message }: { message: Que
   const text = messageText(message);
   if (message.role === "user") return <UserMessage text={text} />;
   const sources = message.parts.find((part) => part.type === "data-sources")?.data.sources ?? [];
-  return <AssistantMessage text={text} sources={sources} />;
+  return <AssistantMessage text={text} sources={sources} listed={listedSources(message)} />;
 });

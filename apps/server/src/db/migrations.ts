@@ -33,4 +33,11 @@ export const migrations = [
 
   CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `,
+  `
+  DROP TABLE chunks_fts;
+  CREATE VIRTUAL TABLE chunks_fts USING fts5 (title, body, tokenize = 'porter unicode61');
+  INSERT INTO chunks_fts (rowid, title, body)
+    SELECT c.id, CASE WHEN substr(c.text, 1, length(i.title)) = i.title THEN NULL ELSE i.title END, c.text
+    FROM chunks c JOIN items i ON i.id = c.item_id;
+  `,
 ];

@@ -1,8 +1,12 @@
+import { ingestResponse } from "@turium-assignment/contracts";
 import { DatabaseSync } from "node:sqlite";
+import * as sqliteVec from "sqlite-vec";
 
 import { describe, expect, test } from "vitest";
 
 import { migrations } from "../../src/db/migrations";
+import { keywordSearch } from "../../src/retrieval/chunk-index";
+import { postIngest, waitForItem } from "../support/api";
 import { embedText } from "../support/models";
 import { startApp, tempDatabasePath } from "../support/app";
 
@@ -16,7 +20,9 @@ describe("database", () => {
       .all()
       .map((row) => row.name);
     expect(tables).toEqual(["chunk_vectors", "chunks", "chunks_fts", "items", "meta"]);
-    expect(app.db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 1 });
+    expect(app.db.prepare("PRAGMA user_version").get()).toEqual({
+      user_version: migrations.length,
+    });
     await app.close();
   });
 
@@ -30,7 +36,9 @@ describe("database", () => {
     expect(second.db.prepare("SELECT value FROM meta WHERE key = 'probe'").get()).toEqual({
       value: "kept",
     });
-    expect(second.db.prepare("PRAGMA user_version").get()).toEqual({ user_version: 1 });
+    expect(second.db.prepare("PRAGMA user_version").get()).toEqual({
+      user_version: migrations.length,
+    });
     await second.close();
   });
 
@@ -55,6 +63,33 @@ describe("database", () => {
     await expect(startApp({ databasePath })).rejects.toThrow(
       `Database version mismatch: database has ${migrations.length + 1}, server knows ${migrations.length}`,
     );
+  });
+
+  test("migrating from version 1 rebuilds keyword search with titles and stemming", async () => {
+    const databasePath = tempDatabasePath();
+    const first = await startApp({ databasePath });
+    const ingest = await postIngest(first.url, {
+      type: "note",
+      title: "meeting with john",
+      text: "scheduled",
+    });
+    const { item } = ingestResponse.parse(await ingest.json());
+    await waitForItem(first.url, item.id, (found) => found.status === "ready");
+    await first.close();
+
+    const old = new DatabaseSync(databasePath, { allowExtension: true });
+    sqliteVec.load(old);
+    old.exec(`
+      DROP TABLE chunks_fts;
+      CREATE VIRTUAL TABLE chunks_fts USING fts5 (body);
+      INSERT INTO chunks_fts (rowid, body) SELECT id, text FROM chunks;
+      PRAGMA user_version = 1;
+    `);
+    old.close();
+
+    const second = await startApp({ databasePath });
+    expect(keywordSearch(second.db, "meetings", 10)).toHaveLength(1);
+    await second.close();
   });
 
   test("vec0 supports insert, KNN and delete", async () => {

@@ -11,6 +11,7 @@ const chunkRow = z.object({
   title: z.string().nullable(),
   url: z.string().nullable(),
   text: z.string(),
+  createdAt: z.string(),
 });
 
 export type RetrievedChunk = z.infer<typeof chunkRow> & {
@@ -35,7 +36,8 @@ export function retrieve(
 
   const rows = db
     .prepare(
-      `SELECT c.id AS chunkId, c.item_id AS itemId, i.title, i.url, c.text
+      `SELECT c.id AS chunkId, c.item_id AS itemId, i.title, i.url, c.text,
+              i.created_at AS createdAt
        FROM chunks c JOIN items i ON i.id = c.item_id
        WHERE c.id IN (${hits.map(() => "?").join(", ")})`,
     )

@@ -56,7 +56,7 @@ const policy = { blocks: () => false };
 
 function requestFor(file: string): IngestRequest {
   if (file.endsWith(".html")) return { type: "url", url: `http://127.0.0.1:${port}/${file}` };
-  return { type: "note", text: readFileSync(join(corpusDir, file), "utf8"), title: file };
+  return { type: "note", text: readFileSync(join(corpusDir, file), "utf8") };
 }
 
 try {

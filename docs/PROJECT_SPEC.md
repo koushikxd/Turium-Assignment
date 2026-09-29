@@ -227,6 +227,9 @@ Each criterion is covered by an automated test unless marked _(manual)_. E2E tes
 - FTS5 keyword search is fused with vector search via RRF.
 - A rare token (an ID, an error code) in exactly one chunk, which the test embedding ranks outside the vector top 6, lands in the hybrid top 6.
 - Queries containing FTS5 syntax (`"`, `*`, `AND`, `NEAR`, `-`) never error.
+- Stopwords never reach keyword search, and a plural finds its singular ("meetings" finds "meeting").
+- A note is found by its title even when its text does not contain the query words.
+- Each source in the answer prompt carries its item's saved time, so a later note can supersede an earlier one.
 
 **Cross-cutting**
 
@@ -240,6 +243,7 @@ Each criterion is covered by an automated test unless marked _(manual)_. E2E tes
 
 - Add a note and a URL, and watch each reach `ready` or `failed`.
 - Ask a question and see the answer stream in, with citation chips that open the source snippet.
+- The sources list shows every retrieved source while the answer streams, and only the cited ones once it finishes.
 - Delete an item.
 
 ## 7. Requirement traceability

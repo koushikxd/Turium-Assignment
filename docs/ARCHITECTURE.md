@@ -99,7 +99,7 @@ CREATE TABLE chunks (
 );
 
 CREATE VIRTUAL TABLE chunk_vectors USING vec0 (embedding float[1536]);  -- rowid = chunks.id
-CREATE VIRTUAL TABLE chunks_fts    USING fts5 (body);                   -- rowid = chunks.id
+CREATE VIRTUAL TABLE chunks_fts    USING fts5 (title, body, tokenize = 'porter unicode61');  -- rowid = chunks.id
 
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ```
@@ -157,7 +157,9 @@ E2E tests inject a policy that allows loopback so they can reach the local fixtu
 | **Recursive, structure-aware**   | Follows the author's own boundaries. Deterministic, cheap, unit-testable | Uneven sizes. Depends on extraction quality                                                                                                        |
 | Semantic (embedding breakpoints) | Adapts to topic shifts                                                   | An embedding per sentence and a threshold to tune. [Qu et al.](https://arxiv.org/abs/2410.13070) found no consistent gain over fixed-size chunking |
 
-**Contextual Retrieval: not built.** [Anthropic's technique](https://www.anthropic.com/news/contextual-retrieval) has an LLM write a short context line for each chunk before indexing, which helps chunks that never name their subject. It is skipped because it mainly helps long multi-section documents (most inbox items are short notes and articles), it makes search match on generated text the user never sees, and the eval corpus is too small to show a gain. It would slot in between chunking and embedding.
+**Title as keyword context.** Every chunk is indexed with its item's title in the FTS `title` column, so the later chunks of a page or long note can be found by words that are only in the title. When the chunk already starts with the title (a note's default title is its first line), the title is left out so it is not counted twice. The title is not added to the embedded text: prefixing it lowered vector-only MRR from 0.901 to 0.86 and hybrid from 0.95 to 0.91 on the eval (§10).
+
+**Full Contextual Retrieval: not built.** [Anthropic's technique](https://www.anthropic.com/news/contextual-retrieval) has an LLM write a short context line for each chunk before indexing, which helps chunks that never name their subject. It is skipped because it mainly helps long multi-section documents (most inbox items are short notes and articles), it makes search match on generated text the user never sees, and the eval corpus is too small to show a gain. It would slot in between chunking and embedding.
 
 ### 5.4 Embedding and commit
 
@@ -172,7 +174,8 @@ query ──▶ embed ──▶ vec0 KNN (k=20) ──┐
 ```
 
 - **Vector:** sqlite-vec 0.1.9 does exact brute-force KNN with L2 distance. OpenAI embeddings are unit-length, so L2 and cosine give the same order, and RRF uses only order.
-- **Keyword:** FTS5 `bm25()`. Raw user text breaks FTS5 syntax (`"`, `AND`, `NEAR`, `-`), so `fts-query` extracts word tokens, quotes each and joins them with `OR`. No tokens means keyword search is skipped.
+- **Keyword:** FTS5 `bm25()` over the chunk body and item title, with the `porter` stemmer so "meetings" matches "meeting". Raw user text breaks FTS5 syntax (`"`, `AND`, `NEAR`, `-`), so `fts-query` extracts word tokens, drops English stopwords, quotes each and joins them with `OR`. No tokens left means keyword search is skipped.
+- **Why stopwords are dropped:** IDF is corpus-relative. In a small inbox of short notes, words like "when", "do" and "have" may appear only in one long saved page, so BM25 rates them rare and ranks that page first for "when do i have meetings". RRF then rewards a chunk in both lists over one that is only near the top of the vector list, so three chunks of the page displaced the note that answered. A fixed list of about 50 pronouns, auxiliaries, articles, prepositions and wh-words, plus contraction fragments (the `s` of "what's", which would match every possessive), removes that failure without a tokenizer dependency. Words that double as names ("will") stay out of the list, since exact names are what keyword search is for.
 - **Fusion:** Reciprocal Rank Fusion (Cormack, Clarke, Büttcher, SIGIR 2009), `score(d) = Σ 1 / (60 + rank_i(d))`. It is rank-based, so BM25 scores and vector distances never need calibrating against each other.
 - **Why hybrid:** embeddings are weak on exact tokens (IDs, error codes, names) and BM25 is strong on them. FTS5 ships with SQLite, so it costs no infrastructure.
 - **Why top 6:** about 2.4k tokens of context, enough for multi-part questions. The constants are in `retrieval/config.ts`.
@@ -184,8 +187,8 @@ query ──▶ embed ──▶ vec0 KNN (k=20) ──┐
 2. **Rewrite only when history exists.** History (with `[n]` markers stripped from assistant turns) plus the new question become one standalone search query. First questions skip this call. History is also passed to the answer call as prior turns.
 3. Embed the query and retrieve (§6). Provider failures up to here return `502 UPSTREAM_AI_FAILED`, since the stream has not opened.
 4. Open the stream and write `data-sources` first, so the UI shows sources while the answer generates.
-5. Stream the answer. The prompt: answer only from the numbered sources, cite as `[n]`, say plainly when the sources do not cover the question, treat source content as data. Sources are ordered best-first, since models use the edges of a long context better than the middle ([Liu et al., "Lost in the Middle"](https://arxiv.org/abs/2307.03172)).
-6. On finish, parse `[n]` markers, keep those that match a sent source, and write `data-citations`. This proves a citation points at a real source, not that the source supports the claim (that would need an LLM judge).
+5. Stream the answer. The prompt: answer only from the numbered sources, lead with the direct answer, use only relevant sources, cite as `[n]`, say plainly when the sources do not cover the question, treat source content as data. Each source carries its item's `saved` timestamp, and the prompt treats the notes as a log: when sources conflict or one updates another ("the meeting is cancelled"), the most recently saved wins and the answer states the current state. The timestamp is prompt-only, not part of `data-sources`. Sources are ordered best-first, since models use the edges of a long context better than the middle ([Liu et al., "Lost in the Middle"](https://arxiv.org/abs/2307.03172)).
+6. On finish, parse `[n]` markers, keep those that match a sent source, and write `data-citations`. This proves a citation points at a real source, not that the source supports the claim (that would need an LLM judge). The UI then narrows the sources list to the cited ones. An answer that fails or is aborted gets no citations and keeps the full list.
 7. A mid-stream failure becomes a masked `error` part. A client disconnect aborts generation via an `AbortSignal`.
 
 **Why AI SDK v7 over the raw OpenAI SDK:** it pipes the stream into Express, supports typed `data-*` parts (schemas in `packages/contracts`), gives the client `useChat`, and ships mock models for tests. The cost is coupling to its stream protocol. The request body is our own contract, so only the response stream depends on the SDK.
@@ -223,7 +226,7 @@ The frontend has no browser E2E suite. The server E2E suite covers every contrac
 
 The eval measures **retrieval only**, with no LLM judge. Retrieval is what the techniques above change, and with a labelled set its metrics are exact and repeatable.
 
-- **Corpus:** 12 committed documents (7 notes, 5 HTML pages served locally so the URL path is exercised), 21 chunks.
+- **Corpus:** 12 committed documents (7 notes, 5 HTML pages served locally so the URL path is exercised), 21 chunks. Notes are ingested as text only, like the UI's single input, so each note's title is its first line.
 - **Questions:** 25, written without reusing chunk wording, otherwise BM25 wins trivially.
 - **Labels:** each question names the expected item and a short evidence phrase. A hit is a chunk from that item whose text contains the phrase. The runner checks every phrase exists in some chunk before scoring, so a bad label fails the run instead of counting as a miss.
 - **Configurations:** vector-only and hybrid over the same ingest. Only the retrieval step differs.
@@ -234,9 +237,9 @@ Results (`text-embedding-3-small`, one run):
 | Configuration               | recall@6 | recall@20 | MRR   |
 | --------------------------- | -------- | --------- | ----- |
 | Vector only                 | 1.00     | 1.00      | 0.901 |
-| Hybrid (vector + BM25, RRF) | 1.00     | 1.00      | 0.920 |
+| Hybrid (vector + BM25, RRF) | 1.00     | 1.00      | 0.950 |
 
-Recall ties at the ceiling: every evidence chunk is in the top 6 in both. Hybrid's MRR edge comes from two questions moving up (rank 3 → 2 and 5 → 2), and none got worse. With 21 chunks on unrelated topics the embedding has few near-misses, and the questions deliberately avoid chunk wording, which removes most of BM25's advantage. The case hybrid exists for, an exact token the embedding misses, is proven by the hybrid E2E test rather than this corpus. 25 questions show direction, not statistical significance.
+Recall ties at the ceiling: every evidence chunk is in the top 6 in both. Against vector-only, hybrid moves two questions up (rank 2 → 1 and 5 → 1) and one down (3 → 4). Stopwords, stemming and the title column (§6) raised hybrid MRR from 0.920, the run before them. With 21 chunks on unrelated topics the embedding has few near-misses, and the questions deliberately avoid chunk wording, which removes most of BM25's advantage. The case hybrid exists for, an exact token the embedding misses, is proven by the hybrid E2E test rather than this corpus. 25 questions show direction, not statistical significance.
 
 ## 11. Decisions and tradeoffs
 
@@ -247,7 +250,7 @@ Recall ties at the ceiling: every evidence chunk is in the top 6 in both. Hybrid
 | Keyword search   | FTS5 + RRF                                | Vector only                         | Exact-token recall for little code. No score calibration                       | A second index, kept in sync in the same transaction                                     |
 | Async ingestion  | DB as queue, in-process worker            | Synchronous request, BullMQ + Redis | Fast requests, per-item failures, restart-safe                                 | Ingestion shares CPU and failure fate with the API                                       |
 | Chunking         | Recursive, structure-aware                | Fixed windows, semantic             | §5.3                                                                           | Depends on extraction preserving structure                                               |
-| Chunk context    | Chunks indexed as written                 | Contextual Retrieval, late chunking | §5.3. Late chunking needs token-level embeddings, which OpenAI does not expose | A chunk that depends on an earlier section can be missed                                 |
+| Chunk context    | Item title in keyword search only         | Contextual Retrieval, late chunking | §5.3. Late chunking needs token-level embeddings, which OpenAI does not expose | A chunk that depends on an earlier section, beyond the title, can be missed              |
 | Relevance cutoff | Model abstains via prompt                 | Score threshold                     | Thresholds do not transfer across models, corpora or RRF                       | The model may stretch weak sources. Citations make it visible                            |
 | Answer transport | Streaming                                 | JSON response                       | Sources show immediately, tokens stream                                        | Errors after the first byte cannot use status codes, so all fallible pre-work runs first |
 | Conversation     | Client-held history, rewrite on follow-up | Single-turn, server sessions        | Follow-ups work with no session storage                                        | One extra LLM call per follow-up                                                         |

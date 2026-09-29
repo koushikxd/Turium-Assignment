@@ -1,4 +1,4 @@
-import type { QueryDataTypes, QueryRequest } from "@turium-assignment/contracts";
+import type { QueryDataTypes, QueryRequest, QuerySource } from "@turium-assignment/contracts";
 import type { UIMessage } from "ai";
 
 export type QueryMessage = UIMessage<never, QueryDataTypes>;
@@ -8,6 +8,12 @@ const CONTENT_MAX = 8000;
 
 export function messageText(message: QueryMessage): string {
   return message.parts.map((part) => (part.type === "text" ? part.text : "")).join("");
+}
+
+export function listedSources(message: QueryMessage): QuerySource[] {
+  const sources = message.parts.find((part) => part.type === "data-sources")?.data.sources ?? [];
+  const citations = message.parts.find((part) => part.type === "data-citations")?.data.citations;
+  return citations ? sources.filter((source) => citations.includes(source.n)) : sources;
 }
 
 export function toQueryRequest(messages: QueryMessage[]): QueryRequest {

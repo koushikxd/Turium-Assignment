@@ -9,17 +9,18 @@ import { ftsQuery } from "./fts-query";
 export function writeChunks(
   db: DatabaseSync,
   itemId: number,
+  title: string | null,
   texts: string[],
   embeddings: number[][],
 ) {
   const insertChunk = db.prepare("INSERT INTO chunks (item_id, ordinal, text) VALUES (?, ?, ?)");
   const insertVector = db.prepare("INSERT INTO chunk_vectors (rowid, embedding) VALUES (?, ?)");
-  const insertFts = db.prepare("INSERT INTO chunks_fts (rowid, body) VALUES (?, ?)");
+  const insertFts = db.prepare("INSERT INTO chunks_fts (rowid, title, body) VALUES (?, ?, ?)");
   for (const [ordinal, text] of texts.entries()) {
     // vec0 rejects a rowid bound as a JS number (ARCHITECTURE §4).
     const chunkId = BigInt(insertChunk.run(itemId, ordinal, text).lastInsertRowid);
     insertVector.run(chunkId, new Float32Array(embeddings[ordinal] ?? []));
-    insertFts.run(chunkId, text);
+    insertFts.run(chunkId, title !== null && !text.startsWith(title) ? title : null, text);
   }
 }
 
