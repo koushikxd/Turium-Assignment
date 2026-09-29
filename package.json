@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "start": "turbo run start",
     "check-types": "turbo run check-types",
     "lint": "oxlint",
     "test": "turbo run test",
