@@ -1,8 +1,17 @@
+import { ingestResponse } from "@turium-assignment/contracts";
 import { describe, expect, test } from "vitest";
 
 import { TOP_K } from "../../src/retrieval/config";
 import { retrieve } from "../../src/retrieval/retrieve";
-import { partOf, postQuery, readUIStream, requestEvent, sourcesOf } from "../support/api";
+import {
+  partOf,
+  postIngest,
+  postQuery,
+  readUIStream,
+  requestEvent,
+  sourcesOf,
+  waitForItem,
+} from "../support/api";
 import { startAppWithNotes } from "../support/app";
 import { embedText, fakeEmbeddingModel } from "../support/models";
 
@@ -53,6 +62,50 @@ describe("hybrid retrieval", () => {
     expect(texts(true)).toContain(TARGET);
     expect(texts(false)).not.toContain(TARGET);
     expect(texts(false)).toHaveLength(TOP_K);
+    await app.close();
+  });
+
+  test("a long page of common words does not reach keyword results", async () => {
+    const note = "meeting with lilly at 8pm";
+    const page = "When do I have to run it? You do have to, when I have time. ".repeat(20);
+    const app = await startAppWithNotes({}, [page, note]);
+    const response = await postQuery(app.url, { question: "when do i have meetings" });
+
+    const { sources } = sourcesOf(await readUIStream(response));
+    const chunkIdOf = (snippet: string) =>
+      sources.find((source) => source.snippet.startsWith(snippet))?.chunkId;
+    const event = await requestEvent(response);
+    expect(event.query).toMatchObject({
+      results: expect.arrayContaining([
+        expect.objectContaining({ chunkId: chunkIdOf(note), keywordRank: 1 }),
+        expect.objectContaining({ chunkId: chunkIdOf("When do I"), keywordRank: null }),
+      ]),
+    });
+    await app.close();
+  });
+
+  test("a note is found by its title when the body does not mention it", async () => {
+    const app = await startAppWithNotes({}, [
+      "Sourdough starter: feed it flour and water twice a day, morning and evening.",
+    ]);
+    const ingest = await postIngest(app.url, {
+      type: "note",
+      title: "meeting with john at 8pm",
+      text: "scheduled",
+    });
+    const { item } = ingestResponse.parse(await ingest.json());
+    await waitForItem(app.url, item.id, (found) => found.status === "ready");
+    const response = await postQuery(app.url, { question: "john" });
+
+    const { sources } = sourcesOf(await readUIStream(response));
+    const target = sources.find((source) => source.itemId === item.id);
+    expect(target?.snippet).toBe("scheduled");
+    const event = await requestEvent(response);
+    expect(event.query).toMatchObject({
+      results: expect.arrayContaining([
+        expect.objectContaining({ chunkId: target?.chunkId, keywordRank: 1 }),
+      ]),
+    });
     await app.close();
   });
 

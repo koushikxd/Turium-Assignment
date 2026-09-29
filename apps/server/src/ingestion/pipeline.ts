@@ -1,25 +1,15 @@
-import type { ItemFailureCode } from "@turium-assignment/contracts";
 import { embedMany } from "ai";
 import type { EmbeddingModel } from "ai";
 import { createLogger } from "evlog";
 import type { DatabaseSync } from "node:sqlite";
 
-import { commitChunks, markFailed, saveExtraction } from "../items/repository";
-import type { ClaimedItem } from "../items/repository";
+import { elapsed } from "../elapsed";
 import { chunk } from "./chunker";
 import { extract } from "./extract";
+import { ItemFailure } from "./item-failure";
+import { commitChunks, markFailed, saveExtraction } from "./jobs";
+import type { ClaimedItem } from "./jobs";
 import type { FetchUrl } from "./url-fetcher";
-
-// A failure the user sees on the item. The message is ours; the cause is only logged.
-export class ItemFailure extends Error {
-  constructor(
-    readonly code: ItemFailureCode,
-    message: string,
-    options?: ErrorOptions,
-  ) {
-    super(message, options);
-  }
-}
 
 export async function processItem(
   db: DatabaseSync,
@@ -29,6 +19,7 @@ export async function processItem(
 ) {
   const log = createLogger({ job: "ingestion", itemId: item.id, type: item.type });
   try {
+    let title: string | null;
     let content: string;
     let started = performance.now();
     if (item.type === "url") {
@@ -36,11 +27,13 @@ export async function processItem(
       log.set({ fetchMs: elapsed(started), bytes: page.bytes });
 
       started = performance.now();
-      const { title, text, truncated } = extract(page);
-      saveExtraction(db, item.id, { title, content: text, truncated });
+      const { title: pageTitle, text, truncated } = extract(page);
+      saveExtraction(db, item.id, { title: pageTitle, content: text, truncated });
       log.set({ extractMs: elapsed(started), truncated });
+      title = pageTitle;
       content = text;
     } else {
+      title = item.title;
       content = item.content;
     }
 
@@ -59,7 +52,7 @@ export async function processItem(
     log.set({ embedMs: elapsed(started), tokens: usage.tokens });
 
     started = performance.now();
-    const committed = commitChunks(db, item.id, texts, embeddings);
+    const committed = commitChunks(db, item.id, title, texts, embeddings);
     log.set({ commitMs: elapsed(started), outcome: committed ? "ready" : "deleted" });
   } catch (cause) {
     const failure =
@@ -73,8 +66,4 @@ export async function processItem(
   } finally {
     log.emit();
   }
-}
-
-function elapsed(started: number) {
-  return Math.round(performance.now() - started);
 }

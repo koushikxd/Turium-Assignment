@@ -2,9 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
 import { KEYWORD_K, TOP_K, VECTOR_K } from "./config";
-import { keywordSearch } from "./keyword-search";
+import { keywordSearch, vectorSearch } from "./chunk-index";
 import { rrf } from "./rrf";
-import { vectorSearch } from "./vector-search";
 
 const chunkRow = z.object({
   chunkId: z.number().int(),
@@ -12,6 +11,7 @@ const chunkRow = z.object({
   title: z.string().nullable(),
   url: z.string().nullable(),
   text: z.string(),
+  createdAt: z.string(),
 });
 
 export type RetrievedChunk = z.infer<typeof chunkRow> & {
@@ -23,7 +23,7 @@ export type RetrievedChunk = z.infer<typeof chunkRow> & {
 // The eval turns keyword search off for its vector-only arm (ARCHITECTURE §10).
 type RetrieveOptions = { keyword: boolean; limit: number };
 
-// Best first. No status filter: chunks exist only for ready items (ARCHITECTURE §5.5).
+// Best first. No status filter: chunks exist only for ready items (ARCHITECTURE §5.4).
 export function retrieve(
   db: DatabaseSync,
   query: { text: string; embedding: number[] },
@@ -36,7 +36,8 @@ export function retrieve(
 
   const rows = db
     .prepare(
-      `SELECT c.id AS chunkId, c.item_id AS itemId, i.title, i.url, c.text
+      `SELECT c.id AS chunkId, c.item_id AS itemId, i.title, i.url, c.text,
+              i.created_at AS createdAt
        FROM chunks c JOIN items i ON i.id = c.item_id
        WHERE c.id IN (${hits.map(() => "?").join(", ")})`,
     )

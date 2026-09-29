@@ -1,5 +1,5 @@
 {
-  "runAt": "2026-09-29T09:49:19.201Z",
+  "runAt": "2026-09-29T14:35:11.938Z",
   "embeddingModel": "text-embedding-3-small",
   "documents": 12,
   "chunks": 21,
@@ -15,7 +15,7 @@
       "recallAt6": 1,
       "recallAt20": 1,
       "failureAt20": 0,
-      "mrr": 0.92
+      "mrr": 0.95
     }
   },
   "perQuestion": [
@@ -42,7 +42,7 @@
     {
       "id": "q05",
       "vectorOnly": 2,
-      "hybrid": 2
+      "hybrid": 1
     },
     {
       "id": "q06",
@@ -62,7 +62,7 @@
     {
       "id": "q09",
       "vectorOnly": 3,
-      "hybrid": 2
+      "hybrid": 4
     },
     {
       "id": "q10",
@@ -102,7 +102,7 @@
     {
       "id": "q17",
       "vectorOnly": 5,
-      "hybrid": 2
+      "hybrid": 1
     },
     {
       "id": "q18",

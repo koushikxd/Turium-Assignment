@@ -2,9 +2,10 @@ import { citationsData, ingestResponse } from "@turium-assignment/contracts";
 import { describe, expect, test, vi } from "vitest";
 
 import { KEYWORD_K } from "../../src/retrieval/config";
-import { keywordSearch } from "../../src/retrieval/keyword-search";
+import { keywordSearch } from "../../src/retrieval/chunk-index";
 import {
   expectProblem,
+  listItems,
   partOf,
   postIngest,
   postQuery,
@@ -198,6 +199,32 @@ describe("POST /query", () => {
     // Two sources, so exactly two closing tags.
     expect(prompt.match(/<\/source/gi)).toHaveLength(2);
     expect(prompt).toContain('title=\\"Feed &quot;A&quot; &amp; &lt;B&gt;\\"');
+    await app.close();
+  });
+
+  test("each source carries the time its item was saved", async () => {
+    const chatModel = fakeChatModel({ answer: "Twice a day [1]." });
+    const app = await appWithNotes({ chatModel });
+    await readUIStream(await postQuery(app.url, { question: "How often do I feed it?" }));
+
+    const prompt = JSON.stringify(chatModel.doStreamCalls[0]?.prompt);
+    const items = await listItems(app.url);
+    expect(items).toHaveLength(2);
+    for (const item of items) expect(prompt).toContain(`saved=\\"${item.createdAt}\\"`);
+    await app.close();
+  });
+
+  test("the prompt carries the current time, so relative dates in sources resolve", async () => {
+    const chatModel = fakeChatModel({ answer: "Twice a day [1]." });
+    const app = await appWithNotes({ chatModel });
+    const before = Date.now();
+    await readUIStream(await postQuery(app.url, { question: "How often do I feed it?" }));
+
+    const prompt = JSON.stringify(chatModel.doStreamCalls[0]?.prompt);
+    const now = prompt.match(/Current time: ([\d:.TZ-]+)/)?.[1];
+    expect(now).toBeDefined();
+    expect(Date.parse(now ?? "")).toBeGreaterThanOrEqual(before - 1000);
+    expect(Date.parse(now ?? "")).toBeLessThanOrEqual(Date.now());
     await app.close();
   });
 

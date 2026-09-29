@@ -1,7 +1,7 @@
 import type { Item } from "@turium-assignment/contracts";
 import { describe, expect, it } from "vitest";
 
-import { pollInterval } from "@/lib/items";
+import { pollInterval, toIngestRequest } from "@/lib/items";
 
 function makeItem(status: Item["status"]): Item {
   return {
@@ -38,5 +38,55 @@ describe("pollInterval", () => {
 
   it("stops before data has loaded", () => {
     expect(pollInterval(undefined)).toBe(false);
+  });
+});
+
+describe("toIngestRequest", () => {
+  it("sends a lone http(s) URL as a url", () => {
+    expect(toIngestRequest("https://example.com/a?b=1")).toEqual({
+      type: "url",
+      url: "https://example.com/a?b=1",
+    });
+    expect(toIngestRequest("  http://example.com  \n")).toEqual({
+      type: "url",
+      url: "http://example.com",
+    });
+  });
+
+  it("accepts an uppercase scheme", () => {
+    expect(toIngestRequest("HTTPS://example.com")).toEqual({
+      type: "url",
+      url: "HTTPS://example.com",
+    });
+  });
+
+  it("sends text containing a URL as a note", () => {
+    expect(toIngestRequest("read https://example.com later")).toEqual({
+      type: "note",
+      text: "read https://example.com later",
+    });
+    expect(toIngestRequest("https://a.com\nhttps://b.com")).toEqual({
+      type: "note",
+      text: "https://a.com\nhttps://b.com",
+    });
+  });
+
+  it("sends a bare domain or another scheme as a note", () => {
+    expect(toIngestRequest("example.com")).toEqual({ type: "note", text: "example.com" });
+    expect(toIngestRequest("ftp://example.com")).toEqual({
+      type: "note",
+      text: "ftp://example.com",
+    });
+  });
+
+  it("trims a multi-line note", () => {
+    expect(toIngestRequest("\n  first line\nsecond  \n")).toEqual({
+      type: "note",
+      text: "first line\nsecond",
+    });
+  });
+
+  it("returns undefined for blank input", () => {
+    expect(toIngestRequest("  \n ")).toBeUndefined();
   });
 });

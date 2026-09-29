@@ -1,7 +1,7 @@
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 
-import { ItemFailure } from "./pipeline";
+import { ItemFailure } from "./item-failure";
 import type { FetchedPage } from "./url-fetcher";
 
 const MAX_CHARS = 100_000;

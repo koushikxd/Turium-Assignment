@@ -11,6 +11,7 @@ import { useLogger } from "evlog/express";
 import type { DatabaseSync } from "node:sqlite";
 
 import type { Models } from "../app";
+import { elapsed } from "../elapsed";
 import { AppError, toError } from "../http/errors";
 import { hasReadyItems } from "../items/repository";
 import { retrieve } from "../retrieval/retrieve";
@@ -135,8 +136,4 @@ function cleanHistory(history: ChatMessage[]) {
         : message,
     )
     .filter((message) => message.content.trim() !== "");
-}
-
-function elapsed(started: number) {
-  return Math.round(performance.now() - started);
 }
