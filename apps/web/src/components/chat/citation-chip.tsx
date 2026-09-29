@@ -11,7 +11,7 @@ export function CitationChip({ source }: { source: QuerySource }) {
     <Popover>
       <PopoverTrigger
         aria-label={`Source ${source.n}: ${sourceLabel(source)}`}
-        className="mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-muted px-1 align-text-top text-xs font-medium text-muted-foreground tabular-nums transition-colors hover:bg-accent hover:text-foreground"
+        className="mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-muted px-1 align-text-top text-xs font-medium text-muted-foreground tabular-nums transition-[color,background-color,scale] hover:bg-accent hover:text-foreground active:scale-[0.96]"
       >
         {source.n}
       </PopoverTrigger>

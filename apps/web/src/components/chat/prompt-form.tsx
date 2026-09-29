@@ -33,7 +33,7 @@ export function PromptForm({
         submit();
       }}
     >
-      <InputGroup className="rounded-3xl bg-sidebar">
+      <InputGroup className="rounded-3xl dark:bg-sidebar">
         <InputGroupTextarea
           aria-label="Question"
           placeholder="Ask about your notes and links…"
@@ -54,7 +54,7 @@ export function PromptForm({
               variant="outline"
               size="icon-sm"
               aria-label="Stop generating"
-              className="ml-auto size-9 rounded-full"
+              className="ml-auto size-9 rounded-full active:scale-[0.96]"
               onClick={onStop}
             >
               <SquareIcon />
@@ -65,7 +65,7 @@ export function PromptForm({
               variant="default"
               size="icon-sm"
               aria-label="Send"
-              className="ml-auto size-9 rounded-full"
+              className="ml-auto size-9 rounded-full active:scale-[0.96]"
               disabled={!input.trim()}
             >
               <ArrowUpIcon />
