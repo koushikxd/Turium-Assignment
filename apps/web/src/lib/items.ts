@@ -15,6 +15,14 @@ export function pollInterval(items: Item[] | undefined): number | false {
   return indexing ? 1500 : false;
 }
 
+// Only a lone http(s) URL is ingested as a URL; anything else, including a bare domain, is a note.
+export function toIngestRequest(input: string): IngestRequest | undefined {
+  const text = input.trim();
+  if (!text) return undefined;
+  if (/^https?:\/\/\S+$/i.test(text)) return { type: "url", url: text };
+  return { type: "note", text };
+}
+
 export function useItems() {
   return useQuery({
     queryKey: ITEMS_KEY,

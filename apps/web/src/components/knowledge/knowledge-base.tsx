@@ -1,4 +1,4 @@
-import { IngestForm } from "@/components/knowledge/ingest-form";
+import { AddItemForm } from "@/components/knowledge/add-item-form";
 import { ItemList } from "@/components/knowledge/item-list";
 import {
   SidebarContent,
@@ -14,13 +14,14 @@ export function KnowledgeBase() {
   return (
     <SidebarContent>
       <SidebarGroup>
-        <SidebarGroupContent>
-          <IngestForm />
-        </SidebarGroupContent>
+        <AddItemForm />
       </SidebarGroup>
       <SidebarGroup>
-        <SidebarGroupLabel>
-          Items{items.data && <span className="ml-1 tabular-nums">({items.data.length})</span>}
+        <SidebarGroupLabel className="gap-1.5">
+          Items
+          {items.data && (
+            <span className="text-muted-foreground tabular-nums">{items.data.length}</span>
+          )}
         </SidebarGroupLabel>
         <SidebarGroupContent>
           <ItemList />
