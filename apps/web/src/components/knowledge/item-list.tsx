@@ -1,5 +1,5 @@
 import type { Item } from "@turium-assignment/contracts";
-import { InboxIcon, Trash2Icon } from "lucide-react";
+import { FileTextIcon, InboxIcon, LinkIcon, Trash2Icon } from "lucide-react";
 
 import {
   AlertDialog,
@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -23,38 +24,51 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { useDeleteItem, useItems } from "@/lib/items";
+import { timeAgo, useNow } from "@/lib/time";
+import { cn } from "@/lib/utils";
 
-const STATUS_DOT = {
-  pending: "bg-yellow-500",
-  processing: "bg-amber-500 animate-pulse motion-reduce:animate-none",
-  ready: "bg-emerald-500",
-  failed: "bg-destructive",
-} satisfies Record<Item["status"], string>;
-
-const STATUS_TEXT = {
-  pending: "Queued",
-  processing: "Indexing",
-  ready: "Ready",
-  failed: "Failed",
-} satisfies Record<Item["status"], string>;
+const STATUS_PILL = {
+  pending: { label: "Queued", className: "border-border bg-muted text-muted-foreground" },
+  processing: {
+    label: "Indexing",
+    className: "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  },
+  ready: {
+    label: "Ready",
+    className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  },
+  failed: {
+    label: "Failed",
+    className: "border-destructive/20 bg-destructive/10 text-destructive",
+  },
+} satisfies Record<Item["status"], { label: string; className: string }>;
 
 function itemTitle(item: Item): string {
   return item.title ?? item.url ?? item.preview ?? "Untitled note";
 }
 
-function ItemMeta({ item }: { item: Item }) {
-  if (item.status === "failed") {
+function itemSource(item: Item): string {
+  return item.type === "url" && item.url ? new URL(item.url).hostname : "Note";
+}
+
+function ItemMeta({ item, now }: { item: Item; now: Date }) {
+  if (item.status === "failed" && item.error) {
     return (
-      <span className="truncate text-xs text-destructive">
-        {item.error?.message ?? STATUS_TEXT.failed}
+      <span title={item.error.message} className="truncate text-xs text-destructive">
+        {item.error.message}
       </span>
     );
   }
-  const text =
-    item.status === "ready" ? `${item.type} · ${item.chunkCount} chunks` : STATUS_TEXT[item.status];
-  return <span className="truncate text-xs text-muted-foreground tabular-nums">{text}</span>;
+  const added = new Date(item.createdAt);
+  return (
+    <span className="truncate text-xs text-muted-foreground tabular-nums">
+      {itemSource(item)} ·{" "}
+      <time dateTime={item.createdAt} title={added.toLocaleString()}>
+        {timeAgo(added, now)}
+      </time>
+    </span>
+  );
 }
 
 function DeleteItemDialog({ item, title }: { item: Item; title: string }) {
@@ -70,10 +84,10 @@ function DeleteItemDialog({ item, title }: { item: Item; title: string }) {
               render={
                 <Button
                   variant="ghost"
-                  size="icon-xs"
+                  size="icon-sm"
                   aria-label="Delete item"
                   disabled={deleting}
-                  className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100"
+                  className="pointer-events-none text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"
                 />
               }
             />
@@ -107,36 +121,53 @@ function DeleteItemDialog({ item, title }: { item: Item; title: string }) {
   );
 }
 
-function ItemRow({ item }: { item: Item }) {
+function ItemRow({ item, now }: { item: Item; now: Date }) {
   const title = itemTitle(item);
+  const pill = STATUS_PILL[item.status];
 
   return (
-    <li className="group flex items-center gap-2 px-3 transition-colors hover:bg-muted/40 focus-within:bg-muted/40">
-      <span aria-hidden className={cn("size-2 shrink-0 rounded-full", STATUS_DOT[item.status])} />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 py-3">
+    <li className="group flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-sidebar-accent focus-within:bg-sidebar-accent">
+      <span aria-hidden className="flex size-4 shrink-0 text-muted-foreground [&_svg]:size-4">
+        {item.type === "url" ? <LinkIcon /> : <FileTextIcon />}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="min-w-0 truncate text-sm font-medium">{title}</span>
-        <ItemMeta item={item} />
+        <ItemMeta item={item} now={now} />
       </div>
-      <DeleteItemDialog item={item} title={title} />
+      {/* The pill and the delete button share one cell; hovering or focusing the row swaps them. */}
+      <div className="grid shrink-0 items-center justify-items-end *:[grid-area:1/1]">
+        <Badge
+          variant="outline"
+          className={cn(
+            "rounded-full transition-opacity group-focus-within:opacity-0 group-hover:opacity-0",
+            pill.className,
+          )}
+        >
+          {pill.label}
+        </Badge>
+        <DeleteItemDialog item={item} title={title} />
+      </div>
     </li>
   );
 }
 
-const LIST_CLASS = "divide-y divide-border overflow-hidden rounded-xl border border-border";
+const LIST_CLASS = "flex flex-col gap-0.5";
 
 export function ItemList() {
   const items = useItems();
+  const now = useNow(5000);
 
   if (items.isPending) {
     return (
       <ul aria-busy className={LIST_CLASS}>
         {[0, 1, 2].map((i) => (
-          <li key={i} className="flex items-center gap-2 px-3 py-3">
-            <Skeleton className="size-2 rounded-full" />
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Skeleton className="h-4 w-3/4 rounded-md" />
-              <Skeleton className="h-3 w-1/3 rounded-md" />
+          <li key={i} className="flex items-center gap-2.5 rounded-lg px-2 py-2">
+            <Skeleton className="size-4" />
+            <div className="flex flex-1 flex-col gap-1">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/3" />
             </div>
+            <Skeleton className="h-5 w-12 rounded-full" />
           </li>
         ))}
       </ul>
@@ -156,15 +187,13 @@ export function ItemList() {
 
   if (items.data.length === 0) {
     return (
-      <Empty className="p-6 md:p-6">
+      <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon" className="size-11 rounded-2xl [&_svg]:size-5">
+          <EmptyMedia variant="icon">
             <InboxIcon />
           </EmptyMedia>
           <EmptyTitle>No items yet</EmptyTitle>
-          <EmptyDescription className="text-xs/relaxed">
-            Add a note or URL to start.
-          </EmptyDescription>
+          <EmptyDescription>Paste a URL or write a note above to start.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -173,7 +202,7 @@ export function ItemList() {
   return (
     <ul className={LIST_CLASS}>
       {items.data.map((item) => (
-        <ItemRow key={item.id} item={item} />
+        <ItemRow key={item.id} item={item} now={now} />
       ))}
     </ul>
   );
