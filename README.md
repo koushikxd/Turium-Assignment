@@ -2,6 +2,8 @@
 
 Save notes and URLs, then ask questions about them. Answers stream in with inline citations that open the source snippets they came from.
 
+![The inbox with saved notes and links on the left, and cited answers on the right](docs/assets/preview.png)
+
 ## Quick start
 
 You need Node 24 (the server uses `node:sqlite`), pnpm 11 and an OpenAI API key.
