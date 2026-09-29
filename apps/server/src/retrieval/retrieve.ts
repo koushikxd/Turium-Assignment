@@ -22,7 +22,7 @@ export type RetrievedChunk = z.infer<typeof chunkRow> & {
 // The eval turns keyword search off for its vector-only arm (ARCHITECTURE §10).
 type RetrieveOptions = { keyword: boolean; limit: number };
 
-// Best first. No status filter: chunks exist only for ready items (ARCHITECTURE §5.5).
+// Best first. No status filter: chunks exist only for ready items (ARCHITECTURE §5.4).
 export function retrieve(
   db: DatabaseSync,
   query: { text: string; embedding: number[] },

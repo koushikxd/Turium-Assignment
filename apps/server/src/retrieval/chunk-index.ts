@@ -34,7 +34,7 @@ export function deleteChunks(db: DatabaseSync, itemId: number) {
 
 const vectorHitRow = z.object({ rowid: z.number().int(), distance: z.number() });
 
-// Exact KNN, nearest first. Rank is 1-based, the input RRF needs (task 07).
+// Exact KNN, nearest first. Rank is 1-based, the input RRF needs (ARCHITECTURE §6).
 export function vectorSearch(db: DatabaseSync, embedding: number[], k: number) {
   return db
     .prepare("SELECT rowid, distance FROM chunk_vectors WHERE embedding MATCH ? AND k = ?")

@@ -51,9 +51,6 @@ lerna-debug.log*
 coverage
 .nyc_output
 
-# Local assignment brief
-/docs
-
 # Misc
 *.tgz
 .cache
