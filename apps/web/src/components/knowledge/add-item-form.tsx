@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import {
   InputGroup,
@@ -17,15 +18,25 @@ export function AddItemForm() {
   const request = toIngestRequest(input);
 
   const error = ingest.error;
-  const errorMessage =
-    error instanceof ApiError
-      ? (error.problem.errors?.[0]?.message ?? error.message)
-      : error?.message;
+  // Validation errors belong to the input and stay inline; anything else is toasted.
+  const errorMessage = error instanceof ApiError ? error.problem.errors?.[0]?.message : undefined;
   const label = request?.type === "url" ? "Add URL" : "Add note";
 
   function submit() {
     if (!request || ingest.isPending) return;
-    ingest.mutate(request, { onSuccess: () => setInput("") });
+    ingest.mutate(request, {
+      onSuccess: () => {
+        setInput("");
+        toast.success(request.type === "url" ? "URL added" : "Note added", {
+          description: "Indexing it now.",
+        });
+      },
+      onError: (error) => {
+        if (!(error instanceof ApiError && error.problem.errors?.length)) {
+          toast.error("Couldn't add item", { description: error.message });
+        }
+      },
+    });
   }
 
   return (

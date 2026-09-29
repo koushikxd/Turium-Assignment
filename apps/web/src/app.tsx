@@ -7,6 +7,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 
 export function App() {
   return (
@@ -24,6 +25,8 @@ export function App() {
         </header>
         <Chat />
       </SidebarInset>
+      {/* index.html pins the dark theme, and no next-themes provider is mounted. */}
+      <Toaster theme="dark" />
     </SidebarProvider>
   );
 }
