@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/message-scroller";
 import { problemMessage } from "@/lib/api";
 import { messageText, type QueryMessage, toQueryRequest } from "@/lib/chat";
+import { useItems } from "@/lib/items";
 
 const transport = new DefaultChatTransport<QueryMessage>({
   api: "/api/query",
@@ -27,6 +28,7 @@ export function Chat() {
     transport,
     dataPartSchemas: DATA_PART_SCHEMAS,
   });
+  const items = useItems();
 
   const busy = status === "submitted" || status === "streaming";
   const last = messages.at(-1);
@@ -41,9 +43,16 @@ export function Chat() {
   if (messages.length === 0) {
     return (
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col items-center justify-center gap-7 px-4 py-6">
-        <h2 className="text-2xl font-semibold tracking-tight text-balance">
-          Ask your knowledge base
-        </h2>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <h2 className="text-2xl font-semibold tracking-tight text-balance">
+            Ask your knowledge base
+          </h2>
+          {items.data?.length === 0 && (
+            <p className="text-sm text-balance text-muted-foreground">
+              Add a note or URL in the sidebar first, then ask about it.
+            </p>
+          )}
+        </div>
         <div className="w-full">{form}</div>
       </div>
     );
