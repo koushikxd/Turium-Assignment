@@ -3,6 +3,7 @@ import type { EmbeddingModel } from "ai";
 import { createLogger } from "evlog";
 import type { DatabaseSync } from "node:sqlite";
 
+import { elapsed } from "../elapsed";
 import { chunk } from "./chunker";
 import { extract } from "./extract";
 import { ItemFailure } from "./item-failure";
@@ -62,8 +63,4 @@ export async function processItem(
   } finally {
     log.emit();
   }
-}
-
-function elapsed(started: number) {
-  return Math.round(performance.now() - started);
 }

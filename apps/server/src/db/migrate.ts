@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
 import { migrations } from "./migrations";
+import { immediate } from "./sql";
 
 const userVersion = z.object({ user_version: z.number().int() });
 
@@ -15,14 +16,9 @@ export function migrate(db: DatabaseSync) {
   for (const [index, sql] of migrations.entries()) {
     const version = index + 1;
     if (version <= current) continue;
-    db.exec("BEGIN IMMEDIATE");
-    try {
+    immediate(db, () => {
       db.exec(sql);
       db.exec(`PRAGMA user_version = ${version}`);
-      db.exec("COMMIT");
-    } catch (error) {
-      db.exec("ROLLBACK");
-      throw error;
-    }
+    });
   }
 }
