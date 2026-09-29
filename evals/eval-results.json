@@ -1,0 +1,148 @@
+{
+  "runAt": "2026-09-29T09:49:19.201Z",
+  "embeddingModel": "text-embedding-3-small",
+  "documents": 12,
+  "chunks": 21,
+  "questions": 25,
+  "configurations": {
+    "vectorOnly": {
+      "recallAt6": 1,
+      "recallAt20": 1,
+      "failureAt20": 0,
+      "mrr": 0.9013333333333332
+    },
+    "hybrid": {
+      "recallAt6": 1,
+      "recallAt20": 1,
+      "failureAt20": 0,
+      "mrr": 0.92
+    }
+  },
+  "perQuestion": [
+    {
+      "id": "q01",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q02",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q03",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q04",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q05",
+      "vectorOnly": 2,
+      "hybrid": 2
+    },
+    {
+      "id": "q06",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q07",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q08",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q09",
+      "vectorOnly": 3,
+      "hybrid": 2
+    },
+    {
+      "id": "q10",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q11",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q12",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q13",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q14",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q15",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q16",
+      "vectorOnly": 2,
+      "hybrid": 2
+    },
+    {
+      "id": "q17",
+      "vectorOnly": 5,
+      "hybrid": 2
+    },
+    {
+      "id": "q18",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q19",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q20",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q21",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q22",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q23",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q24",
+      "vectorOnly": 1,
+      "hybrid": 1
+    },
+    {
+      "id": "q25",
+      "vectorOnly": 1,
+      "hybrid": 1
+    }
+  ]
+}
