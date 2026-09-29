@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import type { IngestRequest } from "@turium-assignment/contracts";
 import { embed } from "ai";
 import { initLogger } from "evlog";
 import { once } from "node:events";
@@ -11,11 +12,11 @@ import { z } from "zod";
 
 import { openDatabase } from "../src/db/open";
 import { env } from "../src/env.server";
-import { dedupKey } from "../src/ingestion/dedup-key";
+import { submitItem } from "../src/ingestion/intake";
 import { claimNextItem } from "../src/ingestion/jobs";
 import { processItem } from "../src/ingestion/pipeline";
 import { createUrlFetcher } from "../src/ingestion/url-fetcher";
-import { insertItem, listItems } from "../src/items/repository";
+import { listItems } from "../src/items/repository";
 import { VECTOR_K } from "../src/retrieval/config";
 import { retrieve } from "../src/retrieval/retrieve";
 import { hitRank, summarize } from "./metrics";
@@ -50,37 +51,25 @@ await once(corpusServer, "listening");
 // SAFETY: a server listening on a TCP port reports an AddressInfo, never a pipe name.
 const { port } = corpusServer.address() as AddressInfo;
 
-function newItem(file: string) {
-  if (file.endsWith(".html")) {
-    const url = `http://127.0.0.1:${port}/${file}`;
-    return {
-      type: "url",
-      title: null,
-      url,
-      content: null,
-      dedupKey: dedupKey({ type: "url", url }),
-    } as const;
-  }
-  const text = readFileSync(join(corpusDir, file), "utf8");
-  return {
-    type: "note",
-    title: file,
-    url: null,
-    content: text,
-    dedupKey: dedupKey({ type: "note", text }),
-  } as const;
+// The corpus server is on loopback, so nothing is blocked.
+const policy = { blocks: () => false };
+
+function requestFor(file: string): IngestRequest {
+  if (file.endsWith(".html")) return { type: "url", url: `http://127.0.0.1:${port}/${file}` };
+  return { type: "note", text: readFileSync(join(corpusDir, file), "utf8"), title: file };
 }
 
 try {
   const itemIds = new Map<string, number>();
   for (const file of files) {
-    const inserted = insertItem(db, newItem(file));
-    if (!("item" in inserted) || !inserted.item) throw new Error(`${file} duplicates another file`);
-    itemIds.set(file, inserted.item.id);
+    const submitted = await submitItem(db, policy, requestFor(file));
+    if (!("item" in submitted))
+      throw new Error(`${file} was not accepted: ${JSON.stringify(submitted)}`);
+    itemIds.set(file, submitted.item.id);
   }
 
-  // The real pipeline, run to completion. The corpus server is on loopback, so nothing is blocked.
-  const fetchUrl = createUrlFetcher({ blocks: () => false });
+  // The real pipeline, run to completion.
+  const fetchUrl = createUrlFetcher(policy);
   for (let item = claimNextItem(db); item; item = claimNextItem(db)) {
     await processItem(db, embeddingModel, fetchUrl, item);
   }
