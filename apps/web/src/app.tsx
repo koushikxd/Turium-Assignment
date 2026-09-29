@@ -11,10 +11,11 @@ import { Toaster } from "@/components/ui/sonner";
 
 export function App() {
   return (
-    <SidebarProvider>
+    // SAFETY: CSSProperties has no index signature for custom properties; --sidebar-width is a plain CSS length.
+    <SidebarProvider style={{ "--sidebar-width": "35vw" } as React.CSSProperties}>
       <Sidebar>
         <SidebarHeader className="h-12 flex-row items-center border-b px-4 text-sm font-semibold">
-          Turium
+          Turium Assignment
         </SidebarHeader>
         <KnowledgeBase />
       </Sidebar>
