@@ -9,7 +9,8 @@
     "start": "node dist/index.mjs",
     "env:generate": "varlock codegen",
     "test": "vitest run",
-    "test:live": "vitest run --config vitest.live.config.ts"
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "eval": "tsx evals/run.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "4.0.78",
