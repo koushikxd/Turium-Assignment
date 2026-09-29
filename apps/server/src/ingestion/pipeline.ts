@@ -3,11 +3,11 @@ import type { EmbeddingModel } from "ai";
 import { createLogger } from "evlog";
 import type { DatabaseSync } from "node:sqlite";
 
-import { commitChunks, markFailed, saveExtraction } from "../items/repository";
-import type { ClaimedItem } from "../items/repository";
 import { chunk } from "./chunker";
 import { extract } from "./extract";
 import { ItemFailure } from "./item-failure";
+import { commitChunks, markFailed, saveExtraction } from "./jobs";
+import type { ClaimedItem } from "./jobs";
 import type { FetchUrl } from "./url-fetcher";
 
 export async function processItem(

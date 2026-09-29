@@ -1,7 +1,7 @@
 import type { EmbeddingModel } from "ai";
 import type { DatabaseSync } from "node:sqlite";
 
-import { claimNextItem, requeueProcessing } from "../items/repository";
+import { claimNextItem, requeueProcessing } from "./jobs";
 import { processItem } from "./pipeline";
 import type { FetchUrl } from "./url-fetcher";
 
