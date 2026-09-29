@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { TOP_K } from "../../src/retrieval/config";
+import { retrieve } from "../../src/retrieval/retrieve";
 import { partOf, postQuery, readUIStream, requestEvent, sourcesOf } from "../support/api";
 import { startAppWithNotes } from "../support/app";
 import { embedText, fakeEmbeddingModel } from "../support/models";
@@ -36,6 +38,21 @@ describe("hybrid retrieval", () => {
         expect.objectContaining({ chunkId: target?.chunkId, vectorRank: 8, keywordRank: 1 }),
       ]),
     });
+    await app.close();
+  });
+
+  test("vector-only retrieval leaves out the chunk that BM25 brings in", async () => {
+    const blind = (text: string) => embedText(text.replaceAll(TOKEN, ""));
+    const embeddingModel = fakeEmbeddingModel(undefined, undefined, blind);
+    const app = await startAppWithNotes({ embeddingModel }, [...DISTRACTORS, TARGET]);
+    const text = `What is build server error ${TOKEN}?`;
+    const query = { text, embedding: blind(text) };
+
+    const texts = (keyword: boolean) =>
+      retrieve(app.db, query, { keyword, limit: TOP_K }).map((chunk) => chunk.text);
+    expect(texts(true)).toContain(TARGET);
+    expect(texts(false)).not.toContain(TARGET);
+    expect(texts(false)).toHaveLength(TOP_K);
     await app.close();
   });
 

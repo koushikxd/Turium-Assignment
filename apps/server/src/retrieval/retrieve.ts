@@ -20,12 +20,18 @@ export type RetrievedChunk = z.infer<typeof chunkRow> & {
   score: number;
 };
 
+// The eval turns keyword search off for its vector-only arm (ARCHITECTURE §10).
+type RetrieveOptions = { keyword: boolean; limit: number };
+
 // Best first. No status filter: chunks exist only for ready items (ARCHITECTURE §5.5).
-export function retrieve(db: DatabaseSync, query: { text: string; embedding: number[] }) {
-  const hits = rrf([
-    vectorSearch(db, query.embedding, VECTOR_K),
-    keywordSearch(db, query.text, KEYWORD_K),
-  ]).slice(0, TOP_K);
+export function retrieve(
+  db: DatabaseSync,
+  query: { text: string; embedding: number[] },
+  options: RetrieveOptions = { keyword: true, limit: TOP_K },
+) {
+  const rankings = [vectorSearch(db, query.embedding, VECTOR_K)];
+  if (options.keyword) rankings.push(keywordSearch(db, query.text, KEYWORD_K));
+  const hits = rrf(rankings).slice(0, options.limit);
   if (hits.length === 0) return [];
 
   const rows = db
