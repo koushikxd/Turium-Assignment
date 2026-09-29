@@ -12,7 +12,7 @@ export function App() {
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="h-12 flex-row items-center px-4 text-sm font-semibold">
+        <SidebarHeader className="h-12 flex-row items-center border-b px-4 text-sm font-semibold">
           Turium
         </SidebarHeader>
         <KnowledgeBase />
