@@ -1,0 +1,152 @@
+[
+  {
+    "id": "q01",
+    "item": "router-setup.md",
+    "question": "Why is the faster Wi-Fi band locked to a fixed channel instead of picking one automatically?",
+    "evidence": "kept jumping onto a DFS channel"
+  },
+  {
+    "id": "q02",
+    "item": "router-setup.md",
+    "question": "Which gadgets are kept on the isolated network segment?",
+    "evidence": "carries only the cameras, the thermostat and the smart plugs"
+  },
+  {
+    "id": "q03",
+    "item": "router-setup.md",
+    "question": "What does a red warning light on the ISP box tell me when we are offline?",
+    "evidence": "the fibre itself is down"
+  },
+  {
+    "id": "q04",
+    "item": "payments-postmortem.md",
+    "question": "What configuration mistake broke card checkout in March?",
+    "evidence": "from 50 to 5"
+  },
+  {
+    "id": "q05",
+    "item": "payments-postmortem.md",
+    "question": "Why did the on-call engineer not react as soon as the alarm went off?",
+    "evidence": "routed to a channel nobody on call was watching"
+  },
+  {
+    "id": "q06",
+    "item": "payments-postmortem.md",
+    "question": "What does error PAY-5031 mean?",
+    "evidence": "processor connection timed out"
+  },
+  {
+    "id": "q07",
+    "item": "payments-postmortem.md",
+    "question": "Who is on the hook for separating the prod and staging settings after the outage?",
+    "evidence": "Tomás owns this"
+  },
+  {
+    "id": "q08",
+    "item": "lamb-tagine.md",
+    "question": "At what point in the cooking do the olives and citrus peel go into the stew?",
+    "evidence": "for the last twenty minutes"
+  },
+  {
+    "id": "q09",
+    "item": "lamb-tagine.md",
+    "question": "How hot should the oven be if I braise the meat there rather than on the hob?",
+    "evidence": "in the oven at 150°C"
+  },
+  {
+    "id": "q10",
+    "item": "car-maintenance.md",
+    "question": "What kind of engine oil does the hatchback use?",
+    "evidence": "fully synthetic 0W-20"
+  },
+  {
+    "id": "q11",
+    "item": "car-maintenance.md",
+    "question": "When do the car's registration check and insurance come up for renewal?",
+    "evidence": "inspection certificate expires on 12 October"
+  },
+  {
+    "id": "q12",
+    "item": "q3-planning.md",
+    "question": "Why was the rebuild of the phone app put on hold?",
+    "evidence": "eating two engineers"
+  },
+  {
+    "id": "q13",
+    "item": "q3-planning.md",
+    "question": "What did the team fail to agree on about what new customers will pay?",
+    "evidence": "Whether to raise prices for new customers in Q3"
+  },
+  {
+    "id": "q14",
+    "item": "lisbon-trip.md",
+    "question": "Where can we leave our luggage before the flat is ready?",
+    "evidence": "luggage storage place near Santa Apolónia"
+  },
+  {
+    "id": "q15",
+    "item": "lisbon-trip.md",
+    "question": "How will we get the door keys for the flat in Portugal?",
+    "evidence": "keys in a lockbox by the door"
+  },
+  {
+    "id": "q16",
+    "item": "halyard-onboarding.md",
+    "question": "How do I get into the live database during an incident?",
+    "evidence": "through the break-glass form"
+  },
+  {
+    "id": "q17",
+    "item": "halyard-onboarding.md",
+    "question": "My local setup fails because an earlier run crashed midway. How do I recover?",
+    "evidence": "run make reset-db"
+  },
+  {
+    "id": "q18",
+    "item": "halyard-onboarding.md",
+    "question": "On which days does the warehouse routing service ship to production?",
+    "evidence": "Tuesday and Thursday mornings"
+  },
+  {
+    "id": "q19",
+    "item": "composting-guide.html",
+    "question": "What mix of dry carbon material to wet nitrogen material should the pile have?",
+    "evidence": "three parts brown to one part green"
+  },
+  {
+    "id": "q20",
+    "item": "composting-guide.html",
+    "question": "How large must a compost pile be before it can heat up?",
+    "evidence": "at least one cubic metre"
+  },
+  {
+    "id": "q21",
+    "item": "kestrel-cli-docs.html",
+    "question": "Which exit status signals a transient error worth a second attempt?",
+    "evidence": "Scripts should retry only on 75"
+  },
+  {
+    "id": "q22",
+    "item": "kestrel-cli-docs.html",
+    "question": "Why can't the access credential be stored in the tool's settings file?",
+    "evidence": "config files end up in dotfile repositories"
+  },
+  {
+    "id": "q23",
+    "item": "fiddle-leaf-fig.html",
+    "question": "My houseplant has dark blotches in the centre of its leaves. What is wrong?",
+    "evidence": "almost always drowning"
+  },
+  {
+    "id": "q24",
+    "item": "10k-training-plan.html",
+    "question": "What should I do if I lose a fortnight of training to the flu?",
+    "evidence": "go back two weeks"
+  },
+  {
+    "id": "q25",
+    "item": "sqlite-backup.html",
+    "question": "How do I confirm that a copy of the database is not corrupted?",
+    "evidence": "PRAGMA integrity_check"
+  }
+]
