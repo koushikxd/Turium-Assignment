@@ -21,14 +21,21 @@ First, install the dependencies:
 pnpm install
 ```
 
-Then, run the development server:
+Add your OpenAI key. The server refuses to start without `OPENAI_API_KEY`:
+
+```bash
+cp apps/server/.env.example apps/server/.env
+# then set OPENAI_API_KEY in apps/server/.env
+```
+
+Then run the development server, or `pnpm start` to build and run the production build:
 
 ```bash
 pnpm run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the web application.
+The API is running at [http://localhost:8888](http://localhost:8888).
 
 ## UI Customization
 
