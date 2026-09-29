@@ -214,6 +214,20 @@ describe("POST /query", () => {
     await app.close();
   });
 
+  test("the prompt carries the current time, so relative dates in sources resolve", async () => {
+    const chatModel = fakeChatModel({ answer: "Twice a day [1]." });
+    const app = await appWithNotes({ chatModel });
+    const before = Date.now();
+    await readUIStream(await postQuery(app.url, { question: "How often do I feed it?" }));
+
+    const prompt = JSON.stringify(chatModel.doStreamCalls[0]?.prompt);
+    const now = prompt.match(/Current time: ([\d:.TZ-]+)/)?.[1];
+    expect(now).toBeDefined();
+    expect(Date.parse(now ?? "")).toBeGreaterThanOrEqual(before - 1000);
+    expect(Date.parse(now ?? "")).toBeLessThanOrEqual(Date.now());
+    await app.close();
+  });
+
   test("without history, no rewrite call is made", async () => {
     const chatModel = fakeChatModel({ answer: "Twice a day [1]." });
     const app = await appWithNotes({ chatModel });

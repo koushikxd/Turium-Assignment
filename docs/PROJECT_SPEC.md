@@ -18,11 +18,13 @@ A single-user web app to save notes and URLs, then ask questions over them in a 
 - Structured logging, RFC 9457 errors, E2E tests, a retrieval eval, CI.
 - Local run via `pnpm dev` and `pnpm start`.
 
-### Non-goals
+### Left out on purpose
 
-| Not doing                         | Why                                                               |
+Each of these would add work without serving what the assignment asks for. The ones that matter in production are covered in ARCHITECTURE.md §13.
+
+| Left out                          | Why                                                               |
 | --------------------------------- | ----------------------------------------------------------------- |
-| Auth, multiple users              | Single-user is fine for the assignment. See ARCHITECTURE.md §13   |
+| Auth, multiple users              | The assignment allows a single user. See ARCHITECTURE.md §13      |
 | Deployment, Docker                | The assignment asks for a local run                               |
 | Server-side conversation storage  | The client holds history                                          |
 | PDFs, images, other content types | Only `text/html` and `text/plain`. Others fail with a clear error |
@@ -30,7 +32,9 @@ A single-user web app to save notes and URLs, then ask questions over them in a 
 | Pagination, rate limiting         | Single local user. See ARCHITECTURE.md §12                        |
 | LLM-judged answer metrics         | The eval measures retrieval only                                  |
 
-### Interpretations
+### How I read the assignment
+
+Where the assignment leaves room, this is what I took it to mean.
 
 - **"Store raw content":** the note text, or the main-content text extracted from the page, stored in full in `items.content`. The fetched HTML is not stored: only text is ever re-used.
 - **"Async":** `POST /ingest` does no page fetch or model work. The only network work in the request is the DNS lookup for the URL policy check, so a blocked URL gets `422` immediately. It stores a `pending` item and returns `202`. A worker does the rest.
@@ -229,7 +233,7 @@ Each criterion is covered by an automated test unless marked _(manual)_. E2E tes
 - Queries containing FTS5 syntax (`"`, `*`, `AND`, `NEAR`, `-`) never error.
 - Stopwords never reach keyword search, and a plural finds its singular ("meetings" finds "meeting").
 - A note is found by its title even when its text does not contain the query words.
-- Each source in the answer prompt carries its item's saved time, so a later note can supersede an earlier one.
+- Each source in the answer prompt carries its item's saved time, and the prompt carries the current time, so a later note can supersede an earlier one and relative dates resolve.
 
 **Cross-cutting**
 
@@ -248,19 +252,19 @@ Each criterion is covered by an automated test unless marked _(manual)_. E2E tes
 
 ## 7. Requirement traceability
 
-| Assignment item                                      | Where                                                           |
-| ---------------------------------------------------- | --------------------------------------------------------------- |
-| Add notes and URLs (server-side fetch)               | `POST /ingest`, ARCHITECTURE.md §5                              |
-| Store raw content, timestamp, source type            | `items` table, §2 interpretations                               |
-| Intentional chunking strategy                        | ARCHITECTURE.md §5.3                                            |
-| Embeddings and vector storage                        | `text-embedding-3-small`, sqlite-vec in the same SQLite file    |
-| Retrieve top chunks                                  | Hybrid retrieval, ARCHITECTURE.md §6                            |
-| Answer with cited sources                            | `/query` stream, citations checked against sent sources         |
-| Frontend: add, list, ask, show answer and snippets   | `apps/web`                                                      |
-| React hooks, state management                        | TanStack Query for server state, `useChat` for the conversation |
-| `POST /ingest`, `GET /items`, `POST /query`          | §4                                                              |
-| Validation, error handling, status codes             | Zod contracts, RFC 9457, §4                                     |
-| Structured logging                                   | ARCHITECTURE.md §8                                              |
-| Tradeoffs: chunking, vector store, scale, production | ARCHITECTURE.md §11-13                                          |
-| Separation of concerns                               | ARCHITECTURE.md §3                                              |
-| Local run, clear setup                               | `pnpm dev`, `pnpm start`, README                                |
+| Assignment item                                      | Where                                                                               |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Add notes and URLs (server-side fetch)               | `POST /ingest`, ARCHITECTURE.md §5                                                  |
+| Store raw content, timestamp, source type            | `items` table, §2 interpretations                                                   |
+| Intentional chunking strategy                        | ARCHITECTURE.md §5.3                                                                |
+| Embeddings and vector storage                        | `text-embedding-3-small`, sqlite-vec in the same SQLite file                        |
+| Retrieve top chunks                                  | Hybrid retrieval, ARCHITECTURE.md §6                                                |
+| Answer with cited sources                            | `/query` stream, citations checked against sent sources                             |
+| Frontend: add, list, ask, show answer and snippets   | `apps/web`                                                                          |
+| React hooks, state management                        | TanStack Query for server state, `useChat` for the conversation, ARCHITECTURE.md §3 |
+| `POST /ingest`, `GET /items`, `POST /query`          | §4                                                                                  |
+| Validation, error handling, status codes             | Zod contracts, RFC 9457, §4                                                         |
+| Structured logging                                   | ARCHITECTURE.md §8                                                                  |
+| Tradeoffs: chunking, vector store, scale, production | ARCHITECTURE.md §11-13                                                              |
+| Separation of concerns                               | ARCHITECTURE.md §3                                                                  |
+| Local run, clear setup                               | `pnpm dev`, `pnpm start`, README                                                    |
